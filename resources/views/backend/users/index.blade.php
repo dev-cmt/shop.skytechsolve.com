@@ -1,5 +1,10 @@
 <x-backend-layout title="User List">
     @push('css')
+        <!-- Datatables CSS -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/dataTables.bootstrap5.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.bootstrap5.min.css">
+
         <!-- Select2 CSS -->
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <style>
@@ -37,7 +42,7 @@
                     @endif
 
                     <div class="table-responsive">
-                        <table class="table table-hover text-nowrap align-middle">
+                        <table id="responsiveDataTable" class="table table-bordered text-nowrap" style="width:100%">
                             <thead>
                                 <tr>
                                     <th>SL</th>
@@ -51,7 +56,7 @@
                             <tbody>
                                 @forelse($users as $key => $user)
                                 <tr class="{{ $user->id == 1 ? 'd-none' : ''}}">
-                                    <td>{{ ++$key }}</td>
+                                    <td>{{ $key++ }}</td>
                                     <td>
                                         @if($user->photo_path)
                                             <img src="{{ asset($user->photo_path) }}" alt="photo" class="rounded-circle" width="40" height="40">
@@ -151,6 +156,21 @@
 
 
     @push('js')
+    <!-- Datatables Cdn -->
+    <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.6/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Internal Datatables JS -->
+    <script src="{{ asset('backend/js/datatables.js') }}"></script>
+
+    <!-- Select 2 Cdn -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function(){
