@@ -1,8 +1,4 @@
-@extends('backEnd.admin.layout.master')
-@section('title')
-    Categories
-@endsection
-@section('content')
+<x-backend-layout title="Category">
     <!-- Page Header -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <h1 class="page-title fw-semibold fs-18 mb-0">Categories</h1>
@@ -55,7 +51,7 @@
                                 @forelse($categories as $key => $category)
                                 <tr>
                                     <td>{{ ++$key }}</td>
-                                    <td>{{ $category->category_name }}</td>
+                                    <td>{{ $category->name }}</td>
                                     <td>{{ $category->slug }}</td>
                                     <td>{{ Str::limit($category->description, 50) }}</td>
                                     <td>
@@ -67,7 +63,7 @@
                                         <div class="btn-list">
                                             <button type="button" class="btn btn-sm btn-warning-light btn-icon edit-category"
                                                 data-id="{{ $category->id }}"
-                                                data-name="{{ $category->category_name }}"
+                                                data-name="{{ $category->name }}"
                                                 data-slug="{{ $category->slug }}"
                                                 data-description="{{ $category->description }}"
                                                 data-status="{{ $category->status }}"
@@ -75,7 +71,7 @@
                                                 data-bs-target="#editCategoryModal">
                                                 <i class="ri-pencil-line"></i>
                                             </button>
-                                            <form action="{{ route('admin.categories.destroy', $category->id) }}" method="POST" class="d-inline">
+                                            <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-danger-light btn-icon" onclick="return confirm('Are you sure?')">
@@ -110,16 +106,21 @@
                     <h6 class="modal-title" id="createCategoryModalLabel">Create New Category</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('admin.categories.store') }}" method="POST">
+                <form action="{{ route('categories.store') }}" method="POST">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="category_name" class="form-label">Category Name</label>
-                            <input type="text" class="form-control" id="category_name" name="category_name" required>
+                            <label for="name" class="form-label">Category Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
                         </div>
                         <div class="mb-3">
                             <label for="slug" class="form-label">Slug</label>
                             <input type="text" class="form-control" id="slug" name="slug" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Category Image</label>
+                            <input type="file" class="form-control" name="image">
+                            <small class="text-muted">Recommended Size: 480x480px</small>
                         </div>
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
@@ -150,17 +151,23 @@
                     <h6 class="modal-title" id="editCategoryModalLabel">Edit Category</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('admin.categories.update') }}" method="POST">
+                <form action="{{ route('categories.update') }}" method="POST">
                     @csrf
                     <div class="modal-body">
                         <input type="hidden" id="edit_id" name="id">
                         <div class="mb-3">
-                            <label for="edit_category_name" class="form-label">Category Name</label>
-                            <input type="text" class="form-control" id="edit_category_name" name="category_name" required>
+                            <label for="edit_name" class="form-label">Category Name</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" required>
                         </div>
                         <div class="mb-3">
                             <label for="edit_slug" class="form-label">Slug</label>
                             <input type="text" class="form-control" id="edit_slug" name="slug" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Category Image</label>
+                            <input type="file" id="edit_image" name="image" class="form-control">
+                            <small class="text-muted">Recommended Size: 480x480px</small>
+                            <div id="currentImage" class="mt-2"></div>
                         </div>
                         <div class="mb-3">
                             <label for="edit_description" class="form-label">Description</label>
@@ -182,35 +189,44 @@
             </div>
         </div>
     </div>
-@endsection
 
-@push('js')
-<script>
-    $(document).ready(function() {
-        // Handle edit button click
-        $('.edit-category').on('click', function() {
-            const id = $(this).data('id');
-            const name = $(this).data('name');
-            const slug = $(this).data('slug');
-            const description = $(this).data('description');
-            const status = $(this).data('status');
+    @push('js')
+    <script>
+        $(document).ready(function() {
+            // Handle edit button click
+            $('.edit-category').on('click', function() {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                const slug = $(this).data('slug');
+                const description = $(this).data('description');
+                const status = $(this).data('status');
 
-            $('#edit_id').val(id);
-            $('#edit_category_name').val(name);
-            $('#edit_slug').val(slug);
-            $('#edit_description').val(description);
-            $('#edit_status').val(status);
-        });
+                $('#edit_id').val(id);
+                $('#edit_name').val(name);
+                $('#edit_slug').val(slug);
+                $('#edit_description').val(description);
+                $('#edit_status').val(status);
 
-        // Auto-generate slug
-        generateSlug('#category_name', '#slug');
-        generateSlug('#edit_category_name', '#edit_slug');
-        function generateSlug(inputSelector, outputSelector) {
-            $(inputSelector).on('keyup', function() {
-                const slug = $(this).val().toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-                $(outputSelector).val(slug);
+                const image = $(this).data('image');
+                if (image) {
+                    $('#currentImage').html(`<small>Current Image:</small><br><img src="{{ asset('') }}${image}" width="60" class="img-thumbnail mt-1">`);
+                } else {
+                    $('#currentImage').html('<span class="badge bg-secondary">No Image</span>');
+                }
             });
-        }
-    });
-</script>
-@endpush
+
+            // Auto-generate slug
+            generateSlug('#name', '#slug');
+            generateSlug('#edit_name', '#edit_slug');
+            function generateSlug(inputSelector, outputSelector) {
+                $(inputSelector).on('keyup', function() {
+                    const slug = $(this).val().toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                    $(outputSelector).val(slug);
+                });
+            }
+        });
+    </script>
+    @endpush
+
+
+</x-backend-layout>

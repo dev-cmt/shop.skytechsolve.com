@@ -8,24 +8,55 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\PageSeoController;
-use App\Http\Controllers\PricingPlanController;
 use App\Http\Controllers\DeveloperApiController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\TagController;
+use App\Http\Controllers\AttributeController;
 
 
 Route::get('/', [HomeController::class, 'welcome'])->name('home');
 Route::get('/page/frodly', [HomeController::class, 'pageFrodly'])->name('page.frodly'); // Not used
 Route::get('/get/frodly', [HomeController::class, 'getFrodly'])->name('get.frodly');
 
-// Admin dashboard
-Route::get('/dashboard', [AdminController::class, 'dashboard'])->middleware(['auth', 'verified'])->name('dashboard');
 
 
 Route::middleware('auth')->group(function () {
-    // Tags Routes
+    // Dashboard
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+    // Products
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+
+    // Categories
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::post('/categories/update', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{category}/delete', [CategoryController::class, 'destroy'])->name('categories.destroy');
+
+    // Brands
+    Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
+    Route::post('/brands', [BrandController::class, 'store'])->name('brands.store');
+    Route::post('/brands/update', [BrandController::class, 'update'])->name('brands.update');
+    Route::delete('/brands/{brand}/delete', [BrandController::class, 'destroy'])->name('brands.destroy');
+
+    // Tags
     Route::get('tags', [TagController::class, 'index'])->name('tags.index');
     Route::post('tags/store', [TagController::class, 'store'])->name('tags.store');
     Route::post('tags/update', [TagController::class, 'update'])->name('tags.update');
-    Route::delete('tags/{id}/delete', [TagController::class, 'destroy'])->name('tags.destroy');
+    Route::delete('tags/{tags}/delete', [TagController::class, 'destroy'])->name('tags.destroy');
+
+    // Attributes
+    Route::get('attributes', [AttributeController::class, 'index'])->name('attributes.index');
+    Route::post('attributes/store', [AttributeController::class, 'store'])->name('attributes.store');
+    Route::post('attributes/update', [AttributeController::class, 'update'])->name('attributes.update');
+    Route::delete('attributes/{attributes}/delete', [AttributeController::class, 'destroy'])->name('attributes.destroy');
+
+
+
+    // Blog Routes
+    Route::resource('blogs', BlogController::class);
 });
 
 

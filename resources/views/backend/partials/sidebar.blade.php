@@ -44,27 +44,27 @@
                     </a>
                     <ul class="slide-menu child1">
                         <li class="slide">
-                            <a href="{{ route('product.list') }}" class="side-menu__item {{ Request::is('products*') ? 'active' : '' }}">
+                            <a href="{{ route('products.index') }}" class="side-menu__item {{ Request::is('products*') ? 'active' : '' }}">
                                 Product List
                             </a>
                         </li>
                         <li class="slide">
-                            <a href="{{ route('category.list') }}" class="side-menu__item {{ Request::is('categories*') ? 'active' : '' }}">
+                            <a href="{{ route('categories.index') }}" class="side-menu__item {{ Request::is('categories*') ? 'active' : '' }}">
                                 Category List
                             </a>
                         </li>
                         <li class="slide">
-                            <a href="{{ route('brand.list') }}" class="side-menu__item {{ Request::is('brands*') ? 'active' : '' }}">
+                            <a href="{{ route('brands.index') }}" class="side-menu__item {{ Request::is('brands*') ? 'active' : '' }}">
                                 Brand List
                             </a>
                         </li>
                         <li class="slide">
-                            <a href="{{ route('tag.list') }}" class="side-menu__item {{ Request::is('tags*') ? 'active' : '' }}">
+                            <a href="{{ route('tags.index') }}" class="side-menu__item {{ Request::is('tags*') ? 'active' : '' }}">
                                 Tag List
                             </a>
                         </li>
                         <li class="slide">
-                            <a href="{{ route('attribute.list') }}" class="side-menu__item {{ Request::is('attributes*') ? 'active' : '' }}">
+                            <a href="{{ route('attributes.index') }}" class="side-menu__item {{ Request::is('attributes*') ? 'active' : '' }}">
                                 Attributes
                             </a>
                         </li>
