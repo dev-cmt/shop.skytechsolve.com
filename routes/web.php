@@ -19,13 +19,13 @@ Route::get('/get/frodly', [HomeController::class, 'getFrodly'])->name('get.frodl
 // Admin dashboard
 Route::get('/dashboard', [AdminController::class, 'dashboard'])->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/change-password', [ProfileController::class, 'editPassword'])->name('password.change');
-    Route::put('/change-password', [ProfileController::class, 'updatePassword'])->name('password.update');
+Route::middleware('auth')->group(function () {
+    // Tags Routes
+    Route::get('tags', [TagController::class, 'index'])->name('tags.index');
+    Route::post('tags/store', [TagController::class, 'store'])->name('tags.store');
+    Route::post('tags/update', [TagController::class, 'update'])->name('tags.update');
+    Route::delete('tags/{id}/delete', [TagController::class, 'destroy'])->name('tags.destroy');
 });
 
 
@@ -34,13 +34,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/developer-api', [DeveloperApiController::class, 'index'])->name('developer-api.index');
     Route::post('/developer-api/generate-token', [DeveloperApiController::class, 'generateToken'])->name('developer-api.generate-token');
 
-
     /**----------------------------------------------------------------------------------------------
      * ----------------------------------------------------------------------------------------------
      * BACKEND TEMPLATE
      * ----------------------------------------------------------------------------------------------
      * ----------------------------------------------------------------------------------------------
      */
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/change-password', [ProfileController::class, 'editPassword'])->name('password.change');
+    Route::put('/change-password', [ProfileController::class, 'updatePassword'])->name('password.update');
+
+    // Role Management
     Route::resource('roles', RoleController::class);
 
     // User Management

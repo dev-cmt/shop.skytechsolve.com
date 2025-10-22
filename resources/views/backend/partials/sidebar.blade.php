@@ -35,6 +35,43 @@
                     </a>
                 </li>
 
+                <!-- Proudct -->
+                <li class="slide has-sub {{ Request::is('products*') || Request::is('categories*') || Request::is('brands*') || Request::is('tags*') || Request::is('attributes*') ? 'active open' : '' }}">
+                    <a href="javascript:void(0);" class="side-menu__item {{ Request::is('products*') || Request::is('categories*') || Request::is('brands*') || Request::is('tags*') || Request::is('attributes*') ? 'active' : '' }}">
+                        <i class="bx bxs-package side-menu__icon"></i>
+                        <span class="side-menu__label">Products</span>
+                        <i class="fe fe-chevron-right side-menu__angle"></i>
+                    </a>
+                    <ul class="slide-menu child1">
+                        <li class="slide">
+                            <a href="{{ route('product.list') }}" class="side-menu__item {{ Request::is('products*') ? 'active' : '' }}">
+                                Product List
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="{{ route('category.list') }}" class="side-menu__item {{ Request::is('categories*') ? 'active' : '' }}">
+                                Category List
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="{{ route('brand.list') }}" class="side-menu__item {{ Request::is('brands*') ? 'active' : '' }}">
+                                Brand List
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="{{ route('tag.list') }}" class="side-menu__item {{ Request::is('tags*') ? 'active' : '' }}">
+                                Tag List
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="{{ route('attribute.list') }}" class="side-menu__item {{ Request::is('attributes*') ? 'active' : '' }}">
+                                Attributes
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+
 
                 <!-- Developer API -->
                 @can('view developer api')
