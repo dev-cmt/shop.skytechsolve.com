@@ -16,44 +16,52 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:categories',
+        // Validate request
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name',
             'description' => 'nullable|string',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|boolean',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
         ]);
+
+        // Handle image upload
         if ($request->hasFile('image')) {
-            $data['image'] = ImageHelper::uploadImage($request->file('image'), 'uploads/team');
+            $validated['image'] = ImageHelper::uploadImage($request->file('image'), 'uploads/category');
         }
-        Category::create($request->all());
+
+        Category::create($validated);
 
         return redirect()->route('categories.index')->with('success', 'Category created successfully.');
     }
 
     public function update(Request $request)
     {
-        $category = Category::find($request->id);
-        $data = $request->all();
-
-        $request->validate([
+        $category = Category::findOrFail($request->id);
+        // Validate request
+        $validated = $request->validate([
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'description' => 'nullable|string',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|boolean',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
         ]);
 
+        // Handle image upload
         if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($category->image) {
-                ImageHelper::deleteImage($category->image);
-            }
-            $data['image'] = ImageHelper::uploadImage($request->file('image'), 'uploads/team');
+            $validated['image'] = ImageHelper::uploadImage($request->file('image'), 'uploads/category', $category->image);
         }
-        $category->update($data);
+
+        $category->update($validated);
 
         return redirect()->route('categories.index')->with('success', 'Category updated successfully.');
     }
 
     public function destroy(Category $category)
     {
+        // Delete image if exists
+        if ($category->image) {
+            ImageHelper::deleteImage($category->image);
+        }
+
         $category->delete();
 
         return redirect()->route('categories.index')->with('success', 'Category deleted successfully.');

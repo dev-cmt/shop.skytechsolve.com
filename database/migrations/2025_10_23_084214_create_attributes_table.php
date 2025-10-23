@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('brands', function (Blueprint $table) {
+        Schema::create('attributes', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->enum('display_type', ['text', 'color', 'image', 'dropdown'])->default('text');
+            $table->boolean('has_image')->default(false);
             $table->timestamps();
         });
     }
@@ -22,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('brands');
+        Schema::dropIfExists('attributes');
     }
 };

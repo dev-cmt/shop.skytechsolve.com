@@ -16,9 +16,7 @@
         <div class="col-xl-12">
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
-                    <div class="card-title">
-                        Categories List
-                    </div>
+                    <div class="card-title">Categories List</div>
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
                         <i class="ri-add-line me-1 fw-semibold align-middle"></i>Add New Category
                     </button>
@@ -40,6 +38,7 @@
                             <thead>
                                 <tr>
                                     <th>SL</th>
+                                    <th>Image</th>
                                     <th>Category Name</th>
                                     <th>Slug</th>
                                     <th>Description</th>
@@ -51,12 +50,17 @@
                                 @forelse($categories as $key => $category)
                                 <tr>
                                     <td>{{ ++$key }}</td>
+                                    <td>
+                                        @if($category->image)
+                                            <img src="{{ asset($category->image) }}" alt="{{ $category->name }}" width="50" class="img-thumbnail me-1">
+                                        @endif
+                                    </td>
                                     <td>{{ $category->name }}</td>
                                     <td>{{ $category->slug }}</td>
                                     <td>{{ Str::limit($category->description, 50) }}</td>
                                     <td>
-                                        <span class="badge bg-{{ $category->status == 'active' ? 'success' : 'danger' }}-transparent">
-                                            {{ ucfirst($category->status) }}
+                                        <span class="badge bg-{{ $category->status ? 'success' : 'danger' }}-transparent">
+                                            {{ $category->status ? 'Active' : 'Inactive' }}
                                         </span>
                                     </td>
                                     <td>
@@ -67,6 +71,7 @@
                                                 data-slug="{{ $category->slug }}"
                                                 data-description="{{ $category->description }}"
                                                 data-status="{{ $category->status }}"
+                                                data-image="{{ $category->image }}"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#editCategoryModal">
                                                 <i class="ri-pencil-line"></i>
@@ -106,7 +111,7 @@
                     <h6 class="modal-title" id="createCategoryModalLabel">Create New Category</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('categories.store') }}" method="POST">
+                <form action="{{ route('categories.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
@@ -115,11 +120,11 @@
                         </div>
                         <div class="mb-3">
                             <label for="slug" class="form-label">Slug</label>
-                            <input type="text" class="form-control" id="slug" name="slug" disabled>
+                            <input type="text" class="form-control" id="slug" name="slug" readonly>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Category Image</label>
-                            <input type="file" class="form-control" name="image">
+                            <input type="file" class="form-control" name="image" accept="image/*">
                             <small class="text-muted">Recommended Size: 480x480px</small>
                         </div>
                         <div class="mb-3">
@@ -129,8 +134,8 @@
                         <div class="mb-3">
                             <label for="status" class="form-label">Status</label>
                             <select class="form-select" id="status" name="status">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
                             </select>
                         </div>
                     </div>
@@ -151,7 +156,7 @@
                     <h6 class="modal-title" id="editCategoryModalLabel">Edit Category</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('categories.update') }}" method="POST">
+                <form action="{{ route('categories.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body">
                         <input type="hidden" id="edit_id" name="id">
@@ -161,11 +166,11 @@
                         </div>
                         <div class="mb-3">
                             <label for="edit_slug" class="form-label">Slug</label>
-                            <input type="text" class="form-control" id="edit_slug" name="slug" disabled>
+                            <input type="text" class="form-control" id="edit_slug" name="slug" readonly>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Category Image</label>
-                            <input type="file" id="edit_image" name="image" class="form-control">
+                            <input type="file" id="edit_image" name="image" class="form-control" accept="image/*">
                             <small class="text-muted">Recommended Size: 480x480px</small>
                             <div id="currentImage" class="mt-2"></div>
                         </div>
@@ -176,8 +181,8 @@
                         <div class="mb-3">
                             <label for="edit_status" class="form-label">Status</label>
                             <select class="form-select" id="edit_status" name="status">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
                             </select>
                         </div>
                     </div>
@@ -200,33 +205,37 @@
                 const slug = $(this).data('slug');
                 const description = $(this).data('description');
                 const status = $(this).data('status');
+                const image = $(this).data('image');
 
                 $('#edit_id').val(id);
                 $('#edit_name').val(name);
                 $('#edit_slug').val(slug);
                 $('#edit_description').val(description);
-                $('#edit_status').val(status);
+                $('#edit_status').val(status ? 1 : 0);
 
-                const image = $(this).data('image');
                 if (image) {
                     $('#currentImage').html(`<small>Current Image:</small><br><img src="{{ asset('') }}${image}" width="60" class="img-thumbnail mt-1">`);
                 } else {
                     $('#currentImage').html('<span class="badge bg-secondary">No Image</span>');
                 }
+
+                // Update form action
+                $('form[action="{{ route('categories.update', 0) }}"]').attr('action', `/categories/${id}`);
             });
 
             // Auto-generate slug
-            generateSlug('#name', '#slug');
-            generateSlug('#edit_name', '#edit_slug');
             function generateSlug(inputSelector, outputSelector) {
                 $(inputSelector).on('keyup', function() {
-                    const slug = $(this).val().toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                    const slug = $(this).val().toLowerCase()
+                        .replace(/ /g, '-')
+                        .replace(/[^\w-]+/g, '');
                     $(outputSelector).val(slug);
                 });
             }
+
+            generateSlug('#name', '#slug');
+            generateSlug('#edit_name', '#edit_slug');
         });
     </script>
     @endpush
-
-
 </x-backend-layout>

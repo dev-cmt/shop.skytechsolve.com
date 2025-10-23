@@ -11,7 +11,7 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
-        'category_name',
+        'name',
         'slug',
         'image',
         'description',
@@ -22,17 +22,17 @@ class Category extends Model
     {
         return $this->hasMany(BlogPost::class);
     }
+    public function product()
+    {
+        return $this->hasMany(Product::class);
+    }
 
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
 
-        static::creating(function ($category) {
-            $category->slug = Str::slug($category->category_name);
-        });
-
-        static::updating(function ($category) {
-            $category->slug = Str::slug($category->category_name);
-        });
+        static::creating(fn($category) => $category->slug = Str::slug($category->name));
+        static::updating(fn($category) => $category->slug = Str::slug($category->name));
     }
+
 }

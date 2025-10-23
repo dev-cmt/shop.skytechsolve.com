@@ -51,7 +51,12 @@ Route::middleware('auth')->group(function () {
     Route::get('attributes', [AttributeController::class, 'index'])->name('attributes.index');
     Route::post('attributes/store', [AttributeController::class, 'store'])->name('attributes.store');
     Route::post('attributes/update', [AttributeController::class, 'update'])->name('attributes.update');
-    Route::delete('attributes/{attributes}/delete', [AttributeController::class, 'destroy'])->name('attributes.destroy');
+    Route::post('attributes/destroy', [AttributeController::class, 'destroy'])->name('attributes.destroy');
+
+    Route::post('attribute-items/store', [AttributeController::class, 'storeItem'])->name('attribute-items.store');
+    Route::post('attribute-items/update', [AttributeController::class, 'updateItem'])->name('attribute-items.update');
+    Route::post('attribute-items/destroy', [AttributeController::class, 'destroyItem'])->name('attribute-items.destroy');
+
 
 
 

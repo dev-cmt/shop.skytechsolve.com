@@ -5,79 +5,77 @@ namespace App\Http\Controllers;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 use App\Helpers\ImageHelper;
+use Illuminate\Support\Str;
 
 class BrandController extends Controller
 {
+    /**
+     * Display a listing of brands.
+     */
     public function index()
     {
-        $brands = Brand::orderBy('name')->paginate(10);
+        $brands = Brand::latest()->paginate(10);
         return view('backend.brands.index', compact('brands'));
     }
 
+    /**
+     * Store a newly created brand.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'url' => 'nullable|url',
+            'name' => 'required|string|max:255|unique:brands,name',
+            'logo' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
             'sort_order' => 'nullable|integer',
-            'is_active' => 'sometimes|boolean'
+            'status' => 'required|boolean',
         ]);
 
-        // Handle logo upload using ImageHelper
+        // Handle logo upload
         if ($request->hasFile('logo')) {
             $validated['logo'] = ImageHelper::uploadImage($request->file('logo'), 'uploads/brands');
         }
 
         Brand::create($validated);
 
-        return redirect()->route('brands.index')
-            ->with('success', 'Client created successfully.');
+        return redirect()->route('brands.index')->with('success', 'Brand created successfully.');
     }
 
+    /**
+     * Update an existing brand.
+     */
     public function update(Request $request)
     {
+        $brand = Brand::findOrFail($request->id);
+
         $validated = $request->validate([
-            'id' => 'required|exists:brands,id',
-            'name' => 'required|string|max:255',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'url' => 'nullable|url',
+            'name' => 'required|string|max:255|unique:brands,name,' . $brand->id,
+            'logo' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
             'sort_order' => 'nullable|integer',
-            'is_active' => 'sometimes|boolean'
+            'status' => 'required|boolean',
         ]);
 
-        $client = Brand::findOrFail($validated['id']);
-
-        // Handle logo upload using ImageHelper
+        // Handle logo upload (delete old logo if exists)
         if ($request->hasFile('logo')) {
-            $validated['logo'] = ImageHelper::uploadImage(
-                $request->file('logo'),
-                'uploads/brands',
-                $client->logo // Pass current logo for deletion if exists
-            );
-        } else {
-            // Keep the existing logo if no new file is uploaded
-            $validated['logo'] = $client->logo;
+            $validated['logo'] = ImageHelper::uploadImage($request->file('logo'), 'uploads/brands', $brand->logo);
         }
 
-        $client->update($validated);
+        $brand->update($validated);
 
-        return redirect()->route('brands.index')
-            ->with('success', 'Client updated successfully.');
+        return redirect()->route('brands.index')->with('success', 'Brand updated successfully.');
     }
 
-    public function destroy($id)
+    /**
+     * Delete a brand.
+     */
+    public function destroy(Brand $brand)
     {
-        $client = Brand::findOrFail($id);
-
-        // Delete logo file if exists using ImageHelper logic
-        if ($client->logo && file_exists(public_path($client->logo))) {
-            unlink(public_path($client->logo));
+        // Delete logo if exists
+        if ($brand->logo) {
+            ImageHelper::deleteImage($brand->logo);
         }
 
-        $client->delete();
+        $brand->delete();
 
-        return redirect()->route('brands.index')
-            ->with('success', 'Client deleted successfully.');
+        return redirect()->route('brands.index')->with('success', 'Brand deleted successfully.');
     }
 }
