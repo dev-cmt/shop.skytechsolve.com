@@ -28,6 +28,9 @@ Route::middleware('auth')->group(function () {
 
     // Products
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::post('/products', [CategoryController::class, 'store'])->name('products.store');
+    Route::post('/products/update', [CategoryController::class, 'update'])->name('products.update');
+    Route::delete('/products/{products}/delete', [CategoryController::class, 'destroy'])->name('products.destroy');
 
     // Categories
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
