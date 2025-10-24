@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('categories', function (Blueprint $table) {
+        Schema::create('shipping_classes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('parent_id')->nullable()->constrained('categories')->onDelete('cascade');
             $table->string('name');
-            $table->string('slug')->unique();
-            $table->string('image')->nullable();
+            $table->text('description')->nullable();
+            $table->decimal('inside_rate', 10, 2)->default(0);   // e.g., Dhaka city delivery
+            $table->decimal('outside_rate', 10, 2)->default(0);  // e.g., outside Dhaka
             $table->boolean('status')->default(true);
             $table->timestamps();
         });
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('categories');
+        Schema::dropIfExists('shipping_classes');
     }
 };

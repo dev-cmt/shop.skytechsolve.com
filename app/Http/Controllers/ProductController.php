@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Brand;
 use App\Models\Attribute;
 use App\Models\AttributeItem;
+use App\Models\ShippingClass;
 
 class ProductController extends Controller
 {
@@ -18,6 +19,18 @@ class ProductController extends Controller
         $brands = Brand::orderBy('id','desc')->get();
         $attributes = Attribute::orderBy('id','desc')->get();
         $attribute_items = AttributeItem::orderBy('id','desc')->get();
-        return view('backend.products.index', compact('products', 'categories', 'brands', 'attributes', 'attribute_items'));
+        $shippingClasses = ShippingClass::where('status', 1)->orderBy('name')->get();
+
+        return view('backend.products.index', compact('products', 'categories', 'brands', 'attributes', 'attribute_items', 'shippingClasses'));
+    }
+    
+
+
+    public function getItems(Request $request)
+    {
+        $attributeIds = $request->attribute_ids;
+        $attributes = Attribute::with('items')->whereIn('id', $attributeIds)->get();
+
+        return response()->json($attributes);
     }
 }

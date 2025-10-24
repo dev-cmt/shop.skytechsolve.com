@@ -6,97 +6,98 @@
             <nav>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Categories</li>
+                    <li class="breadcrumb-item active">Categories</li>
                 </ol>
             </nav>
         </div>
     </div>
 
+    <!-- Categories Table -->
     <div class="row">
         <div class="col-xl-12">
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
                     <div class="card-title">Categories List</div>
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
-                        <i class="ri-add-line me-1 fw-semibold align-middle"></i>Add New Category
+                        <i class="ri-add-line me-1"></i>Add Category
                     </button>
                 </div>
                 <div class="card-body">
-                    @if($errors->any())
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <ul class="mb-0">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-
                     <div class="table-responsive">
-                        <table class="table text-nowrap">
+                        <table class="table text-nowrap align-middle">
                             <thead>
                                 <tr>
                                     <th>SL</th>
                                     <th>Image</th>
                                     <th>Category Name</th>
-                                    <th>Slug</th>
-                                    <th>Description</th>
+                                    <th>Parent</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($categories as $key => $category)
-                                <tr>
-                                    <td>{{ ++$key }}</td>
-                                    <td>
-                                        @if($category->image)
-                                            <img src="{{ asset($category->image) }}" alt="{{ $category->name }}" width="50" class="img-thumbnail me-1">
-                                        @endif
-                                    </td>
-                                    <td>{{ $category->name }}</td>
-                                    <td>{{ $category->slug }}</td>
-                                    <td>{{ Str::limit($category->description, 50) }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ $category->status ? 'success' : 'danger' }}-transparent">
-                                            {{ $category->status ? 'Active' : 'Inactive' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-list">
-                                            <button type="button" class="btn btn-sm btn-warning-light btn-icon edit-category"
-                                                data-id="{{ $category->id }}"
-                                                data-name="{{ $category->name }}"
-                                                data-slug="{{ $category->slug }}"
-                                                data-description="{{ $category->description }}"
-                                                data-status="{{ $category->status }}"
-                                                data-image="{{ $category->image }}"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editCategoryModal">
-                                                <i class="ri-pencil-line"></i>
-                                            </button>
-                                            <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-danger-light btn-icon" onclick="return confirm('Are you sure?')">
-                                                    <i class="ri-delete-bin-line align-middle"></i>
+                                @php
+                                    $i = 1;
+                                    $renderCategory = function($category, $level = 0) use (&$i, &$renderCategory, $data) {
+                                        $padding = $level * 20;
+                                        $parentName = $category->parent ? $category->parent->name : '-';
+                                @endphp
+                                        <tr>
+                                            <td>{{ $i++ }}</td>
+                                            <td>
+                                                @if($category->image)
+                                                    <img src="{{ asset($category->image) }}" width="50" class="img-thumbnail">
+                                                @else
+                                                    <span class="badge bg-secondary">No Image</span>
+                                                @endif
+                                            </td>
+                                            <td style="padding-left: {{ $padding }}px;">
+                                                {{ $level > 0 ? '↳ ' : '' }}{{ $category->name }}
+                                            </td>
+                                            <td>{{ $parentName }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ $category->status ? 'success' : 'danger' }}">
+                                                    {{ $category->status ? 'Active' : 'Inactive' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-light edit_cat_btn" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#editCategoryModal"
+                                                        data-id="{{ $category->id }}"
+                                                        data-name="{{ $category->name }}"
+                                                        data-status="{{ $category->status }}"
+                                                        data-parent="{{ $category->parent_id ?? '' }}"
+                                                        data-image="{{ $category->image ?? '' }}">
+                                                    <i class="ri-pencil-line"></i>
                                                 </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="6" class="text-center">No categories found.</td>
-                                </tr>
-                                @endforelse
+                                                <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-danger-light" onclick="return confirm('Are you sure?')">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                @php
+                                        foreach($data->where('parent_id', $category->id) as $child) {
+                                            $renderCategory($child, $level + 1);
+                                        }
+                                    };
+                                @endphp
+
+                                @foreach($data->where('parent_id', null) as $category)
+                                    @php $renderCategory($category); @endphp
+                                @endforeach
+                                
+                                @if($data->where('parent_id', null)->isEmpty())
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">No categories found</td>
+                                    </tr>
+                                @endif
                             </tbody>
                         </table>
-                    </div>
-
-                    <div class="d-flex justify-content-center mt-3">
-                        {{ $categories->links() }}
                     </div>
                 </div>
             </div>
@@ -104,44 +105,52 @@
     </div>
 
     <!-- Create Category Modal -->
-    <div class="modal fade" id="createCategoryModal" tabindex="-1" aria-labelledby="createCategoryModalLabel" aria-hidden="true">
+    <div class="modal fade" id="createCategoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title" id="createCategoryModalLabel">Create New Category</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
                 <form action="{{ route('categories.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Create Category</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="name" class="form-label">Category Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
+                            <label class="form-label">Category Name</label>
+                            <input type="text" name="name" class="form-control" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="slug" class="form-label">Slug</label>
-                            <input type="text" class="form-control" id="slug" name="slug" readonly>
-                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Category Image</label>
-                            <input type="file" class="form-control" name="image" accept="image/*">
-                            <small class="text-muted">Recommended Size: 480x480px</small>
+                            <input type="file" name="image" class="form-control" accept="image/*">
                         </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+
+                        <div class="form-check mb-3">
+                            <input type="checkbox" id="is_subcategory_add" class="form-check-input">
+                            <label class="form-check-label">Is Subcategory?</label>
                         </div>
+
+                        <div class="mb-3" id="parent_cat_group_add" style="display:none;">
+                            <label class="form-label">Parent Category</label>
+                            <select name="parent_id" class="form-control">
+                                <option value="">-- Select --</option>
+                                @foreach($data->where('parent_id', null) as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="mb-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-control">
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Category</button>
                     </div>
                 </form>
             </div>
@@ -149,46 +158,51 @@
     </div>
 
     <!-- Edit Category Modal -->
-    <div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
+    <div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title" id="editCategoryModalLabel">Edit Category</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
                 <form action="{{ route('categories.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    <input type="hidden" name="id" id="edit_id">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Category</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
                     <div class="modal-body">
-                        <input type="hidden" id="edit_id" name="id">
                         <div class="mb-3">
-                            <label for="edit_name" class="form-label">Category Name</label>
-                            <input type="text" class="form-control" id="edit_name" name="name" required>
+                            <label class="form-label">Category Name</label>
+                            <input type="text" name="name" id="edit_name" class="form-control" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="edit_slug" class="form-label">Slug</label>
-                            <input type="text" class="form-control" id="edit_slug" name="slug" readonly>
-                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Category Image</label>
-                            <input type="file" id="edit_image" name="image" class="form-control" accept="image/*">
-                            <small class="text-muted">Recommended Size: 480x480px</small>
+                            <input type="file" name="image" class="form-control" accept="image/*">
                             <div id="currentImage" class="mt-2"></div>
                         </div>
-                        <div class="mb-3">
-                            <label for="edit_description" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_description" name="description" rows="3"></textarea>
+
+                        <div class="form-check mb-3">
+                            <input type="checkbox" id="is_subcategory_edit" class="form-check-input">
+                            <label class="form-check-label">Is Subcategory?</label>
                         </div>
+
+                        <div class="mb-3" id="parent_cat_group_edit" style="display: none;">
+                            <label class="form-label">Parent Category</label>
+                            <select name="parent_id" id="parent_id_edit" class="form-control">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+
                         <div class="mb-3">
-                            <label for="edit_status" class="form-label">Status</label>
-                            <select class="form-select" id="edit_status" name="status">
+                            <label class="form-label">Status</label>
+                            <select name="status" id="edit_status" class="form-control">
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Update</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Update Category</button>
                     </div>
                 </form>
             </div>
@@ -198,43 +212,81 @@
     @push('js')
     <script>
         $(document).ready(function() {
-            // Handle edit button click
-            $('.edit-category').on('click', function() {
-                const id = $(this).data('id');
-                const name = $(this).data('name');
-                const slug = $(this).data('slug');
-                const description = $(this).data('description');
-                const status = $(this).data('status');
-                const image = $(this).data('image');
+            const categories = @json($data);
 
-                $('#edit_id').val(id);
-                $('#edit_name').val(name);
-                $('#edit_slug').val(slug);
-                $('#edit_description').val(description);
-                $('#edit_status').val(status ? 1 : 0);
-
-                if (image) {
-                    $('#currentImage').html(`<small>Current Image:</small><br><img src="{{ asset('') }}${image}" width="60" class="img-thumbnail mt-1">`);
-                } else {
-                    $('#currentImage').html('<span class="badge bg-secondary">No Image</span>');
-                }
-
-                // Update form action
-                $('form[action="{{ route('categories.update', 0) }}"]').attr('action', `/categories/${id}`);
+            // Toggle parent category dropdowns
+            $('#is_subcategory_add').change(function() {
+                $('#parent_cat_group_add').toggle(this.checked);
             });
 
-            // Auto-generate slug
-            function generateSlug(inputSelector, outputSelector) {
-                $(inputSelector).on('keyup', function() {
-                    const slug = $(this).val().toLowerCase()
-                        .replace(/ /g, '-')
-                        .replace(/[^\w-]+/g, '');
-                    $(outputSelector).val(slug);
+            $('#is_subcategory_edit').change(function() {
+                $('#parent_cat_group_edit').toggle(this.checked);
+            });
+
+            // Edit category handler
+            $('.edit_cat_btn').on('click', function() {
+                const $this = $(this);
+                const data = $this.data();
+                const currentId = data.id;
+                
+                $('#edit_id').val(currentId);
+                $('#edit_name').val(data.name);
+                $('#edit_status').val(data.status);
+
+                const hasParent = data.parent && data.parent !== 'false';
+                $('#is_subcategory_edit').prop('checked', hasParent);
+                if(hasParent){
+                    $('#parent_cat_group_edit').toggle(hasParent);
+                }
+                
+                // Populate parent dropdown excluding current category and preventing circular relationships
+                let options = '<option value="">-- Select --</option>';
+                
+                // Get all main categories (parent_id = null)
+                const mainCategories = categories.filter(cat => cat.parent_id === null);
+                
+                mainCategories.forEach(cat => {
+                    // Exclude current category and check if it's not a child of current category
+                    if (cat.id != currentId && !isChildCategory(cat.id, currentId, categories)) {
+                        const selected = cat.id == data.parent ? 'selected' : '';
+                        options += `<option value="${cat.id}" ${selected}>${cat.name}</option>`;
+                    }
                 });
+                
+                $('#parent_id_edit').html(options);
+
+                // Show current image
+                const currentImage = $('#currentImage');
+                if (data.image) {
+                    currentImage.html(`
+                        <small>Current Image:</small><br>
+                        <img src="{{ asset('') }}${data.image}" width="60" class="img-thumbnail mt-1">
+                    `);
+                } else {
+                    currentImage.html('<span class="badge bg-secondary">No Image</span>');
+                }
+            });
+
+            // Function to check if a category is a child of the current editing category
+            function isChildCategory(categoryId, currentEditingId, allCategories) {
+                // This prevents circular relationships - if current editing category becomes parent of its own parent
+                let category = allCategories.find(cat => cat.id == categoryId);
+                while (category && category.parent_id) {
+                    if (category.parent_id == currentEditingId) {
+                        return true; // This category is a child of the current editing category
+                    }
+                    category = allCategories.find(cat => cat.id == category.parent_id);
+                }
+                return false;
             }
 
-            generateSlug('#name', '#slug');
-            generateSlug('#edit_name', '#edit_slug');
+            // Reset modals when closed
+            $('#createCategoryModal, #editCategoryModal').on('hidden.bs.modal', function() {
+                $(this).find('form')[0].reset();
+                $('#parent_cat_group_add, #parent_cat_group_edit').hide();
+                $('#currentImage').empty();
+                $('#parent_id_edit').html('<option value="">-- Select --</option>');
+            });
         });
     </script>
     @endpush

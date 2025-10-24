@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\PageSeoController;
 use App\Http\Controllers\DeveloperApiController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BrandController;
@@ -28,9 +29,11 @@ Route::middleware('auth')->group(function () {
 
     // Products
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    Route::post('/products', [CategoryController::class, 'store'])->name('products.store');
-    Route::post('/products/update', [CategoryController::class, 'update'])->name('products.update');
-    Route::delete('/products/{products}/delete', [CategoryController::class, 'destroy'])->name('products.destroy');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::post('/products/update', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{products}/delete', [ProductController::class, 'destroy'])->name('products.destroy');
+    
+    Route::get('/attributes/items', [ProductController::class, 'getItems'])->name('attributes.getItems');
 
     // Categories
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
