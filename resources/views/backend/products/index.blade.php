@@ -69,9 +69,19 @@
                                     <div class="tab-pane show active text-muted" id="home-vertical-link" role="tabpanel">
                                         <div class="row">
                                             <div class="col-md-6 mb-1">
-                                                <label for="total_stock" class="form-label">Sku Prefix <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-sm" id="total_stock" name="total_stock" value="{{ old('total_stock') }}">
+                                                <label class="form-label">SKU Prefix <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control form-control-sm" id="sku_prefix" name="sku_prefix" value="{{ old('sku_prefix','PROD') }}">
                                                 @error('total_stock') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-md-6 mb-1">
+                                                <label class="form-label">Base Price <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control form-control-sm" id="price" name="price" value="{{ old('price','0.00') }}" min="0" step="0.01">
+                                                @error('price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-md-6 mb-1">
+                                                <label for="purchase_price" class="form-label">Purchase Price</label>
+                                                <input type="number" class="form-control form-control-sm" id="purchase_price" name="purchase_price" value="{{ old('purchase_price') }}" required>
+                                                @error('purchase_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label for="base_price" class="form-label">Stock Management <span class="text-danger">*</span></label>
@@ -79,17 +89,8 @@
                                                     <option value="7 Day" {{ old('discount_type')=='percentage'?'selected':'' }}>Quantity</option>
                                                     <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>In Stock</option>
                                                     <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>Out Of Stock</option>
+                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>Upcomming</option>
                                                 </select>
-                                                @error('base_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
-                                            </div>
-                                            <div class="col-md-6 mb-1">
-                                                <label for="total_stock" class="form-label">Price <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-sm" id="total_stock" name="total_stock" value="{{ old('total_stock', 0) }}">
-                                                @error('total_stock') <div class="text-danger mt-1">{{ $message }}</div> @enderror
-                                            </div>
-                                            <div class="col-md-6 mb-1">
-                                                <label for="base_price" class="form-label">Purchase Price</label>
-                                                <input type="number" class="form-control form-control-sm" id="base_price" name="base_price" value="{{ old('base_price') }}" required>
                                                 @error('base_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
@@ -239,24 +240,20 @@
                 
                 <!-- Product Variants -->
                 <div class="card custom-card">
-                    <div class="card-header"><div class="card-title">Product Variants Preview</div></div>
+                    <div class="card-header">
+                        <div class="card-title">Product Variants Preview</div>
+                    </div>
                     <div class="card-body">
                         <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">SKU Prefix <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-sm" id="sku_prefix" name="sku_prefix" value="{{ old('sku_prefix','PROD') }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Base Price <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control form-control-sm" id="price" name="price" value="{{ old('price','0.00') }}" min="0" step="0.01">
-                            </div>
                             <div class="col-md-4">
                                 <label class="form-label">Attributes</label>
                                 <select name="attribute_id[]" id="attribute_id" class="form-select" multiple>
                                     @foreach($attributes as $attribute)
-                                        <option data-name="{{ $attribute->name }}" value="{{ $attribute->id }}"
-                                        @if(isset($productAttributes) && in_array($attribute->id, $productAttributes)) selected @endif
-                                        >{{ $attribute->name }}</option>
+                                        <option data-name="{{ $attribute->name }}" data-has-image="{{ $attribute->has_image }}"
+                                            value="{{ $attribute->id }}"
+                                            @if(isset($productAttributes) && in_array($attribute->id, $productAttributes)) selected @endif>
+                                            {{ $attribute->name }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -333,33 +330,39 @@
                                 let choice = new Choices(this, { removeItemButton: true, searchEnabled: true });
                                 itemChoicesMap.set(attrId, choice);
                                 
-                                // *** FIX: Add direct event listener for reliable variant generation ***
-                                this.addEventListener('change', generateVariants); 
-
-                                // Preselect old values if editing
-                                if(window.oldAttributeItems && window.oldAttributeItems[attrId]){
-                                    // Use setChoiceByValue for Choices.js
-                                    choice.setChoiceByValue(window.oldAttributeItems[attrId]);
-                                    // The direct listener added above will handle triggering generateVariants after setting value.
-                                }
+                                // Add direct event listener
+                                this.addEventListener('change', generateVariants);
                             }
                         });
                     }
 
                     // Render attribute items using template
                     function renderAttributeItems(attributes){
-                        // Clear old Choices instances before clearing container
+                        // Clear old Choices
                         itemChoicesMap.forEach(choice => choice.destroy());
                         itemChoicesMap.clear(); 
-                        
                         $('#attribute_items_container').empty();
                         
+                        // Save for later access (for image logic)
+                        $('#attribute_items_container').data('attributes', attributes);
+
                         attributes.forEach(attr => {
                             let $template = $('#attribute-item-template .attribute-item-wrapper').clone();
                             $template.find('.attribute-name-label').text(attr.name);
                             let options = attr.items.map(i=>`<option value="${i.id}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</option>`).join('');
                             $template.find('.attribute-item').html(options);
                             $template.find('.attribute-item').attr('data-id', attr.id).attr('data-name', attr.name);
+
+                            // ✅ If attribute has_image = true, add upload area
+                            if(attr.has_image){
+                                $template.append(`
+                                    <div class="mt-2 image-upload-container" data-attr-id="${attr.id}">
+                                        <label class="form-label fw-semibold">Upload Images for ${attr.name}</label>
+                                        <div class="image-upload-fields border rounded p-2 bg-light"></div>
+                                    </div>
+                                `);
+                            }
+
                             $('#attribute_items_container').append($template);
                         });
                         
@@ -371,14 +374,12 @@
                     function loadItems(){
                         let selectedAttrs = $('#attribute_id').val();
                         if(!selectedAttrs?.length){
-                            // Destroy Choices for attribute items if no attributes are selected
                             itemChoicesMap.forEach(choice => choice.destroy());
                             itemChoicesMap.clear();
-                            
                             $('#attribute_items_container,#variant_combinations_container tbody').empty();
                             return;
                         }
-                        // NOTE: Keeping the Blade route helper as is
+
                         $.get('{{ route("attributes.getItems") }}', { attribute_ids: selectedAttrs }, function(res){
                             renderAttributeItems(res);
                         });
@@ -400,38 +401,24 @@
                         let price = $('#price').val().trim() || '0.00';
 
                         let attrs = $('.attribute-item').map(function(){
-                            // Use val() to get selected IDs from the actual select element
                             let items = $(this).val(); 
                             if(!items?.length) return null;
-                            
-                            // Collect the corresponding names for the selected IDs
-                            let names = $(this).find('option:selected').filter(function() {
-                                // Ensure we only map options that are actually selected/available
-                                return items.includes($(this).val());
-                            }).map((_,o)=>$(o).data('name')).get();
-
+                            let names = $(this).find('option:selected').map((_,o)=>$(o).data('name')).get();
                             return {id: $(this).data('id'), items, names};
-                        }).get().filter(a => a !== null); // Filter out nulls
+                        }).get().filter(a => a !== null);
 
                         $('#variant_combinations_container tbody').empty();
                         if(!attrs.length) return;
 
-                        // Map items array to cartesian product input
                         let combos = cartesianProduct(attrs.map(a=>a.items));
                         
                         combos.forEach(c=>{
-                            // c is an array of IDs from the cartesian product, e.g., [101, 201]
-                            
                             let names = c.map((id, j) => {
-                                // Find the name corresponding to the current item ID (id) 
-                                // within the list of selected item IDs (attrs[j].items) for attribute j.
                                 let index = attrs[j].items.indexOf(id);
                                 return attrs[j].names[index];
                             });
-                            
                             let sku = skuPrefix + '-' + names.map(n=>n.toLowerCase().replace(/[^a-z0-9]+/g,'-')).join('-');
 
-                            // Existing variant values
                             let priceValue = price, qtyValue = 0;
                             if(window.oldVariants){
                                 let existing = window.oldVariants.find(v=>v.sku==sku);
@@ -443,32 +430,35 @@
                     }
 
                     // Remove variant row
-                    $(document).on('click', '.remove-variant', function(){ $(this).closest('tr').remove(); });
+                    $(document).on('click', '.remove-variant', function(){ 
+                        $(this).closest('tr').remove(); 
+                    });
 
-                    // SKU uniqueness check (Mocked/untested functionality as route is external)
+                    // ✅ Handle image uploads for attributes with has_image = true
+                    $(document).on('change', '.attribute-item', function(){
+                        let $select = $(this);
+                        let attrId = $select.data('id');
+                        let selectedNames = $select.find('option:selected').map((_, o) => $(o).data('name')).get();
+                        let $container = $select.closest('.attribute-item-wrapper').find('.image-upload-container .image-upload-fields');
+                        $container.empty();
+
+                        let attrs = $('#attribute_items_container').data('attributes') || [];
+                        let attr = attrs.find(a => a.id == attrId);
+                        if(!attr || !attr.has_image) return;
+
+                        selectedNames.forEach(name => {
+                            let safeName = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                            $container.append(`
+                                <div class="mb-2">
+                                    <label class="form-label">${name} Image:</label>
+                                    <input type="file" name="attribute_images[${attrId}][${safeName}]" class="form-control form-control-sm" accept="image/*">
+                                </div>
+                            `);
+                        });
+                    });
+
+                    // SKU check (optional mock)
                     function checkSKU(sku){
-                        // Only run check if the SKU input field has focus/key-up happened.
-                        if (sku.length === 0) {
-                            $('#form_add_btn').prop('disabled', false);
-                            $('#error_msg').text('');
-                            return;
-                        }
-                        
-                        // This relies on Laravel setup being present for token and route
-                        // $.post('https://stock.prodevsltd.xyz/admin-product/sku_check', {
-                        //     _token: $('meta[name="csrf-token"]').attr('content'),
-                        //     sku: sku
-                        // }, function(data){
-                        //     if(data=='found'){
-                        //         $('#form_add_btn').prop('disabled', true);
-                        //         $('#error_msg').text('SKU Already Exists!');
-                        //     } else {
-                        //         $('#form_add_btn').prop('disabled', false);
-                        //         $('#error_msg').text('');
-                        //     }
-                        // });
-                        
-                        // Mocking the check for environment without backend
                         if (sku.toLowerCase().includes('mock-error')) {
                             $('#form_add_btn').prop('disabled', true);
                             $('#error_msg').text('SKU Already Exists! (Mocked)');
@@ -480,11 +470,7 @@
 
                     // Events
                     $('#attribute_id').on('change', loadItems);
-                    
-                    // Kept the delegated handler for static inputs and as a safety net, 
-                    // but the primary fix for .attribute-item is the direct listener in initItemChoices.
-                    $(document).on('change keyup', '#sku_prefix,#price', generateVariants); 
-                    
+                    $(document).on('change keyup', '#sku_prefix,#price', generateVariants);
                     $(document).on('keyup', '.sku-input', function(){ checkSKU($(this).val()); });
 
                     // Initialize Choices
@@ -500,6 +486,7 @@
                 });
                 </script>
                 @endpush
+
 
 
 
