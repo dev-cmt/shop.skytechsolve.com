@@ -68,7 +68,7 @@
                                 <div class="tab-content">
                                     <div class="tab-pane show active text-muted" id="home-vertical-link" role="tabpanel">
                                         <div class="row">
-                                            <div class="col-md-6 mb-1">
+                                            {{-- <div class="col-md-6 mb-1">
                                                 <label class="form-label">SKU Prefix <span class="text-danger">*</span></label>
                                                 <input type="text" class="form-control form-control-sm" id="sku_prefix" name="sku_prefix" value="{{ old('sku_prefix','PROD') }}">
                                                 @error('total_stock') <div class="text-danger mt-1">{{ $message }}</div> @enderror
@@ -77,7 +77,7 @@
                                                 <label class="form-label">Base Price <span class="text-danger">*</span></label>
                                                 <input type="number" class="form-control form-control-sm" id="price" name="price" value="{{ old('price','0.00') }}" min="0" step="0.01">
                                                 @error('price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
-                                            </div>
+                                            </div> --}}
                                             <div class="col-md-6 mb-1">
                                                 <label for="purchase_price" class="form-label">Purchase Price</label>
                                                 <input type="number" class="form-control form-control-sm" id="purchase_price" name="purchase_price" value="{{ old('purchase_price') }}" required>
@@ -243,158 +243,252 @@
                     <div class="card-header">
                         <div class="card-title">Product Variants Preview</div>
                     </div>
-
                     <div class="card-body">
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Attributes</label>
                                 <select name="attribute_id[]" id="attribute_id" class="form-select" multiple>
                                     @foreach($attributes as $attribute)
-                                        <option value="{{ $attribute->id }}">{{ $attribute->name }}</option>
+                                        <option data-name="{{ $attribute->name }}" data-has-image="{{ $attribute->has_image }}"
+                                            value="{{ $attribute->id }}"
+                                            @if(isset($productAttributes) && in_array($attribute->id, $productAttributes)) selected @endif>
+                                            {{ $attribute->name }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
-                            {{-- <div class="col-md-4">
-                                <label class="form-label">SKU Prefix</label>
-                                <input type="text" id="sku_prefix" class="form-control" placeholder="SKU" value="SKU">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Base Price</label>
-                                <input type="number" id="price" class="form-control" placeholder="0.00" value="0.00">
-                            </div> --}}
                         </div>
 
-                        <div id="attribute_items_container" class="row"></div>
+                        <div class="row" id="attribute_items_container"></div>
 
-                        <div id="variant_combinations_container"></div>
+                        <div class="mt-3" id="variant_combinations_container">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th class="w-1/4">Variant Name</th>
+                                        <th class="w-1/4">SKU</th>
+                                        <th class="w-1/5">Price</th>
+                                        <th class="w-1/5">Quantity</th>
+                                        <th class="w-1/12 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                        <div id="error_msg" class="text-danger mt-2"></div>
                     </div>
                 </div>
 
-                @push('css')
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-                @endpush
+                <!-- Hidden templates -->
+                <div id="attribute-item-template" style="display: none;">
+                    <div class="col-md-4 mb-3 attribute-item-wrapper">
+                        <label class="attribute-name-label"></label>
+                        <select class="form-select attribute-item" multiple></select>
+                    </div>
+                </div>
+
+                <table style="display:none;">
+                    <tbody id="variant-row-template">
+                        <tr>
+                            <td class="variant-name"></td>
+                            <td><input type="text" name="variants[sku][]" class="form-control form-control-sm sku-input" value=""></td>
+                            <td><input type="number" name="variants[price][]" class="form-control form-control-sm price-input" value="0"></td>
+                            <td><input type="number" name="variants[quantity][]" class="form-control form-control-sm quantity-input" value="0"></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-variant">X</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
 
                 @push('js')
                 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+
                 <script>
-                    $(function() {
+                $(function(){
 
-                        // Initialize Choices.js dropdowns
-                        function initChoices() {
-                            const makeChoice = (el) => new Choices(el, {
-                                removeItemButton: true,
-                                searchEnabled: true,
-                                placeholderValue: 'Select Items'
-                            });
+                    const escapeHtml = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+                    const cartesianProduct = arr => arr.length ? arr.reduce((a,b)=>a.flatMap(d=>b.map(e=>[].concat(d,e))),[[]]) : [];
 
-                            if (!$('#attribute_id').data('choices-initialized')) {
-                                makeChoice('#attribute_id');
-                                $('#attribute_id').data('choices-initialized', true);
+                    let attributeSelect, itemChoicesMap = new Map();
+
+                    // Initialize main attribute select
+                    function initAttributeSelect(){
+                        if(attributeSelect) attributeSelect.destroy();
+                        attributeSelect = new Choices('#attribute_id', { removeItemButton: true, searchEnabled: true });
+                    }
+
+                    // Initialize dynamically added attribute item selects
+                    function initItemChoices(){
+                        $('.attribute-item').each(function(){
+                            let $select = $(this);
+                            let attrId = $select.data('id');
+
+                            if(!itemChoicesMap.has(attrId)){
+                                let choice = new Choices(this, { removeItemButton: true, searchEnabled: true });
+                                itemChoicesMap.set(attrId, choice);
+                                
+                                // Add direct event listener
+                                this.addEventListener('change', generateVariants);
+                            }
+                        });
+                    }
+
+                    // Render attribute items using template
+                    function renderAttributeItems(attributes){
+                        // Clear old Choices
+                        itemChoicesMap.forEach(choice => choice.destroy());
+                        itemChoicesMap.clear(); 
+                        $('#attribute_items_container').empty();
+                        
+                        // Save for later access (for image logic)
+                        $('#attribute_items_container').data('attributes', attributes);
+
+                        attributes.forEach(attr => {
+                            let $template = $('#attribute-item-template .attribute-item-wrapper').clone();
+                            $template.find('.attribute-name-label').text(attr.name);
+                            let options = attr.items.map(i=>`<option value="${i.id}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</option>`).join('');
+                            $template.find('.attribute-item').html(options);
+                            $template.find('.attribute-item').attr('data-id', attr.id).attr('data-name', attr.name);
+
+                            // ✅ If attribute has_image = true, add upload area
+                            if(attr.has_image){
+                                $template.append(`
+                                    <div class="mt-2 image-upload-container" data-attr-id="${attr.id}">
+                                        <label class="form-label fw-semibold">Upload Images for ${attr.name}</label>
+                                        <div class="image-upload-fields border rounded p-2 bg-light"></div>
+                                    </div>
+                                `);
                             }
 
-                            $('.attribute-item').each(function() {
-                                if (!$(this).data('choices-initialized')) {
-                                    makeChoice(this);
-                                    $(this).data('choices-initialized', true);
-                                }
-                            });
+                            $('#attribute_items_container').append($template);
+                        });
+                        
+                        initItemChoices();
+                        generateVariants();
+                    }
+
+                    // Load attribute items via AJAX
+                    function loadItems(){
+                        let selectedAttrs = $('#attribute_id').val();
+                        if(!selectedAttrs?.length){
+                            itemChoicesMap.forEach(choice => choice.destroy());
+                            itemChoicesMap.clear();
+                            $('#attribute_items_container,#variant_combinations_container tbody').empty();
+                            return;
                         }
 
+                        $.get('{{ route("attributes.getItems") }}', { attribute_ids: selectedAttrs }, function(res){
+                            renderAttributeItems(res);
+                        });
+                    }
 
-                        // Load attribute items (e.g. Color, Size options)
-                        function loadAttributeItems() {
-                            let selected = $('#attribute_id').val();
-                            if (!selected || selected.length === 0) {
-                                $('#attribute_items_container').html('');
-                                $('#variant_combinations_container').html('');
-                                return;
+                    // Add variant row
+                    function addVariantRow(names, sku, price, qty=0){
+                        let $row = $('#variant-row-template tr').clone();
+                        $row.find('.variant-name').text(names.join(' | '));
+                        $row.find('.sku-input').val(sku);
+                        $row.find('.price-input').val(price);
+                        $row.find('.quantity-input').val(qty);
+                        $('#variant_combinations_container tbody').append($row);
+                    }
+
+                    // Generate variant combinations
+                    function generateVariants(){
+                        let skuPrefix = $('#sku_prefix').val().trim() || 'SKU';
+                        let price = $('#price').val().trim() || '0.00';
+
+                        let attrs = $('.attribute-item').map(function(){
+                            let items = $(this).val(); 
+                            if(!items?.length) return null;
+                            let names = $(this).find('option:selected').map((_,o)=>$(o).data('name')).get();
+                            return {id: $(this).data('id'), items, names};
+                        }).get().filter(a => a !== null);
+
+                        $('#variant_combinations_container tbody').empty();
+                        if(!attrs.length) return;
+
+                        let combos = cartesianProduct(attrs.map(a=>a.items));
+                        
+                        combos.forEach(c=>{
+                            let names = c.map((id, j) => {
+                                let index = attrs[j].items.indexOf(id);
+                                return attrs[j].names[index];
+                            });
+                            let sku = skuPrefix + '-' + names.map(n=>n.toLowerCase().replace(/[^a-z0-9]+/g,'-')).join('-');
+
+                            let priceValue = price, qtyValue = 0;
+                            if(window.oldVariants){
+                                let existing = window.oldVariants.find(v=>v.sku==sku);
+                                if(existing){ priceValue = existing.price; qtyValue = existing.quantity; }
                             }
 
-                            $.get('{{ route("attributes.getItems") }}', { attribute_ids: selected }, function(html) {
-                                $('#attribute_items_container').html(html);
-                                initChoices();
-                            });
-                        }
-
-                        // Load variant combinations (SKU generation)
-                        function loadVariantCombinations() {
-                            let attrs = [];
-                            $('.attribute-item').each(function() {
-                                let id = $(this).data('id');
-                                let items = $(this).val();
-                                if (items && items.length) attrs.push({ id, items });
-                            });
-
-                            $.ajax({
-                                url: '{{ route("products.getItemsCombo") }}',
-                                method: 'GET',
-                                data: {
-                                    sku_prefix: $('#sku_prefix').val(),
-                                    price: $('#price').val(),
-                                    purchase_price: $('#purchase_price').val(),
-                                    attributes: attrs
-                                },
-                                success: function(html) {
-                                    $('#variant_combinations_container').html(html);
-                                }
-                            });
-                        }
-
-                        // ✅ NEW: Dynamically show file inputs for color/image attributes
-                        function updateImageUploadFields() {
-                            $('.attribute-item').each(function() {
-                                let hasImage = $(this).data('has-image'); // detect attribute with images (Color)
-                                if (!hasImage) return;
-
-                                let attrId = $(this).data('id');
-                                let selectedItems = $(this).find('option:selected');
-                                let container = $('.image-upload-container[data-attr-id="' + attrId + '"] .image-upload-fields');
-
-                                container.html(''); // Clear previous fields
-
-                                selectedItems.each(function() {
-                                    let itemId = $(this).val();
-                                    let itemName = $(this).text();
-
-                                    // Add file upload input per selected item
-                                    let fieldHtml = `
-                                        <div class="d-flex align-items-center mb-2 single-upload-field" data-item-id="${itemId}">
-                                            <span class="me-2 fw-semibold text-secondary" style="min-width:80px">${itemName}</span>
-                                            <input type="file" name="attribute_images[${attrId}][${itemId}]" class="form-control form-control-sm" accept="image/*">
-                                        </div>
-                                    `;
-                                    container.append(fieldHtml);
-                                });
-                            });
-                        }
-
-                        // --------------------
-                        // Event Bindings
-                        // --------------------
-                        $('#attribute_id').on('change', loadAttributeItems);
-
-                        // When user selects attribute items (e.g., colors or sizes)
-                        $(document).on('change', '.attribute-item', function() {
-                            loadVariantCombinations();
-                            updateImageUploadFields(); // 👈 Add this
+                            addVariantRow(names, sku, priceValue, qtyValue);
                         });
+                    }
 
-                        // When SKU or Price changes, refresh variant combinations
-                        $(document).on('keyup change', '#sku_prefix,#price,#purchase_price', loadVariantCombinations);
-
-                        // Remove variant row
-                        $(document).on('click', '.remove-variant', function() {
-                            $(this).closest('tr').remove();
-                        });
-
-                        // Initialize on page load
-                        initChoices();
+                    // Remove variant row
+                    $(document).on('click', '.remove-variant', function(){ 
+                        $(this).closest('tr').remove(); 
                     });
-                    </script>
 
+                    // ✅ Handle image uploads for attributes with has_image = true
+                    $(document).on('change', '.attribute-item', function(){
+                        let $select = $(this);
+                        let attrId = $select.data('id');
+                        let selectedNames = $select.find('option:selected').map((_, o) => $(o).data('name')).get();
+                        let $container = $select.closest('.attribute-item-wrapper').find('.image-upload-container .image-upload-fields');
+                        $container.empty();
+
+                        let attrs = $('#attribute_items_container').data('attributes') || [];
+                        let attr = attrs.find(a => a.id == attrId);
+                        if(!attr || !attr.has_image) return;
+
+                        selectedNames.forEach(name => {
+                            let safeName = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                            $container.append(`
+                                <div class="mb-2">
+                                    <label class="form-label">${name} Image:</label>
+                                    <input type="file" name="attribute_images[${attrId}][${safeName}]" class="form-control form-control-sm" accept="image/*">
+                                </div>
+                            `);
+                        });
+                    });
+
+                    // SKU check (optional mock)
+                    function checkSKU(sku){
+                        if (sku.toLowerCase().includes('mock-error')) {
+                            $('#form_add_btn').prop('disabled', true);
+                            $('#error_msg').text('SKU Already Exists! (Mocked)');
+                        } else {
+                            $('#form_add_btn').prop('disabled', false);
+                            $('#error_msg').text('');
+                        }
+                    }
+
+                    // Events
+                    $('#attribute_id').on('change', loadItems);
+                    $(document).on('change keyup', '#sku_prefix,#price', generateVariants);
+                    $(document).on('keyup', '.sku-input', function(){ checkSKU($(this).val()); });
+
+                    // Initialize Choices
+                    initAttributeSelect();
+
+                    // Preload old product data
+                    @if(isset($product) && $product)
+                        window.oldAttributeItems = {!! json_encode($productAttributeItems ?? []) !!};
+                        window.oldVariants = {!! json_encode($productVariants ?? []) !!};
+                    @endif
+
+                    loadItems();
+                });
+                </script>
                 @endpush
 
-                
+
+
 
 
                 

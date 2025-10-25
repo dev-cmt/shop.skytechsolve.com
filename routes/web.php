@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{products}/delete', [ProductController::class, 'destroy'])->name('products.destroy');
     
     Route::get('/attributes/items', [ProductController::class, 'getItems'])->name('attributes.getItems');
+    Route::get('/products/variants', [ProductController::class, 'getVariantCombinations'])->name('products.getItemsCombo');
 
     // Categories
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
