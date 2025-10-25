@@ -63,9 +63,6 @@ class ProductController extends Controller
         // Collect items for cartesian
         $combos = $this->cartesianProduct($attributes->pluck('items')->toArray());
 
-            
-        dd($combos);
-
         $variants = collect($combos)->map(function ($combo) use ($skuPrefix, $price, $purchase_price) {
             $names = [];
             foreach ($combo as $id) {
