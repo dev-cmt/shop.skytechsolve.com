@@ -1,3 +1,4 @@
+<!--backend.products.partisals._attribute_items.blade.php-->
 @foreach($attributes as $attribute)
 <div class="col-md-4 mb-2 attribute-item-wrapper">
     <label class="form-label">{{ $attribute->name }} Items</label>

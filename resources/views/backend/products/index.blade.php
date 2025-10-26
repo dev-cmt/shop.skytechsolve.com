@@ -70,28 +70,28 @@
                                         <div class="row">
                                             <div class="col-md-6 mb-1">
                                                 <label class="form-label">SKU Prefix <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-sm" id="sku_prefix" name="sku_prefix" value="{{ old('sku_prefix','PROD') }}">
+                                                <input type="text" class="form-control form-control-sm" id="sku_prefix" name="sku_prefix" value="{{ old('sku_prefix','SKU') }}" required>
                                                 @error('total_stock') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label class="form-label">Base Price <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-sm" id="price" name="price" value="{{ old('price','0.00') }}" min="0" step="0.01">
-                                                @error('price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                                <input type="number" class="form-control form-control-sm" id="sale_price" name="sale_price" value="{{ old('sale_price','0.00') }}" min="0" step="0.01">
+                                                @error('sale_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label for="purchase_price" class="form-label">Purchase Price</label>
-                                                <input type="number" class="form-control form-control-sm" id="purchase_price" name="purchase_price" value="{{ old('purchase_price') }}" required>
+                                                <input type="number" class="form-control form-control-sm" id="purchase_price" name="purchase_price" value="{{ old('purchase_price','0.00') }}">
                                                 @error('purchase_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label for="base_price" class="form-label">Stock Management <span class="text-danger">*</span></label>
-                                                <select name="discount_type" id="discount_type" class="form-select">
-                                                    <option value="7 Day" {{ old('discount_type')=='percentage'?'selected':'' }}>Quantity</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>In Stock</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>Out Of Stock</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>Upcomming</option>
+                                                <select name="stock_status" id="stock_status" class="form-select">
+                                                    <option value="quantity" {{ old('stock_status')=='quantity'?'selected':'' }}>Quantity</option>
+                                                    <option value="in_stock" {{ old('stock_status')=='in_stock'?'selected':'' }}>In Stock</option>
+                                                    <option value="out_of_stock" {{ old('stock_status')=='out_of_stock'?'selected':'' }}>Out Of Stock</option>
+                                                    <option value="upcomming" {{ old('stock_status')=='upcomming'?'selected':'' }}>Upcomming</option>
                                                 </select>
-                                                @error('base_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                                @error('stock_status') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label for="total_stock" class="form-label">Total Stock</label>
@@ -100,33 +100,36 @@
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label for="stock_out" class="form-label">Stock Out <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-sm" id="stock_out" name="stock_out" value="{{ old('stock_out', 1) }}" required>
-                                                @error('base_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                                <input type="number" class="form-control form-control-sm" id="stock_out" name="stock_out" value="{{ old('stock_out', 1) }}">
+                                                @error('stock_out') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
                                                 <label for="base_price" class="form-label">Alert Quantity</label>
-                                                <input type="number" class="form-control form-control-sm" id="base_price" name="base_price" value="{{ old('base_price') }}" required>
-                                                @error('base_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                                <input type="number" class="form-control form-control-sm" id="alert_quantity" name="alert_quantity" value="{{ old('alert_quantity', 0) }}">
+                                                @error('alert_quantity') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-md-6 mb-1">
-                                                <label for="base_price" class="form-label">Expire</label>
-                                                <select name="discount_type" id="discount_type" class="form-select">
+                                                <label for="expire" class="form-label">Expire</label>
+                                                <select name="expire" id="expire" class="form-select">
                                                     <option value="">Select</option>
-                                                    <option value="7 Day" {{ old('discount_type')=='percentage'?'selected':'' }}>7 Days</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>15 Days</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>1 Month</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>2 Month</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>3 Month</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>6 Month</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>1 Year</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>2 Year</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>3 Year</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>5 Year</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>10 Year</option>
-                                                    <option value="flat" {{ old('discount_type')=='flat'?'selected':'' }}>Life Time</option>
+                                                    <option value="7 Days" {{ old('expire') == '7 Days' ? 'selected' : '' }}>7 Days</option>
+                                                    <option value="15 Days" {{ old('expire') == '15 Days' ? 'selected' : '' }}>15 Days</option>
+                                                    <option value="1 Month" {{ old('expire') == '1 Month' ? 'selected' : '' }}>1 Month</option>
+                                                    <option value="2 Month" {{ old('expire') == '2 Month' ? 'selected' : '' }}>2 Month</option>
+                                                    <option value="3 Month" {{ old('expire') == '3 Month' ? 'selected' : '' }}>3 Month</option>
+                                                    <option value="6 Month" {{ old('expire') == '6 Month' ? 'selected' : '' }}>6 Month</option>
+                                                    <option value="1 Year" {{ old('expire') == '1 Year' ? 'selected' : '' }}>1 Year</option>
+                                                    <option value="2 Year" {{ old('expire') == '2 Year' ? 'selected' : '' }}>2 Year</option>
+                                                    <option value="3 Year" {{ old('expire') == '3 Year' ? 'selected' : '' }}>3 Year</option>
+                                                    <option value="5 Year" {{ old('expire') == '5 Year' ? 'selected' : '' }}>5 Year</option>
+                                                    <option value="10 Year" {{ old('expire') == '10 Year' ? 'selected' : '' }}>10 Year</option>
+                                                    <option value="Life Time" {{ old('expire') == 'Life Time' ? 'selected' : '' }}>Life Time</option>
                                                 </select>
-                                                @error('base_price') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                                @error('expire')
+                                                    <div class="text-danger mt-1">{{ $message }}</div>
+                                                @enderror
                                             </div>
+
                                         </div>
 
                                     </div>
@@ -237,7 +240,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Product Variants -->
                 <div class="card custom-card">
                     <div class="card-header">
@@ -394,10 +397,10 @@
 
                 @endpush
 
-                
 
 
-                
+
+
             </div>
 
             <!-- Right Column: Categories + Brands + Tags + Settings -->

@@ -16,6 +16,14 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\AttributeController;
 
+Route::get('/cc', function () {
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:cache');
+    return 'Cleared!';
+});
 
 Route::get('/', [HomeController::class, 'welcome'])->name('home');
 Route::get('/page/frodly', [HomeController::class, 'pageFrodly'])->name('page.frodly'); // Not used
@@ -32,7 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
     Route::post('/products/update', [ProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{products}/delete', [ProductController::class, 'destroy'])->name('products.destroy');
-    
+
     Route::get('/attributes/items', [ProductController::class, 'getItems'])->name('attributes.getItems');
     Route::get('/products/variants', [ProductController::class, 'getVariantCombinations'])->name('products.getItemsCombo');
 

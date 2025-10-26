@@ -13,15 +13,18 @@ return new class extends Migration
     {
         Schema::create('media', function (Blueprint $table) {
             $table->id();
-            $table->string('parent_type')->nullable(); // e.g., App\Models\Service, App\Models\Blog
-            $table->unsignedBigInteger('parent_id'); // ID of the parent model
-            $table->string('file_path')->nullable();
-            $table->string('caption')->nullable();
-            $table->boolean('is_default')->default(false);
+            $table->string('name')->nullable();
+            $table->string('path');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+            $table->enum('type', ['image', 'video', 'document'])->default('image');
+            $table->string('alt_text')->nullable();
+            $table->integer('size')->default(0);
+            $table->integer('sort_order')->default(0);
             $table->timestamps();
 
-            // Index polymorphic relationship
-            $table->index(['parent_type', 'parent_id']);
+            $table->index(['model_type', 'model_id']);
+            $table->index(['type', 'sort_order']);
         });
     }
 
