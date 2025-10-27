@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Page;
 use App\Models\ShippingClass;
+use App\Models\Attribute;
+use App\Models\AttributeItem;
 
 class DefaultSettingSeeder extends Seeder
 {
@@ -55,6 +57,49 @@ class DefaultSettingSeeder extends Seeder
             ['id' => 15, 'parent_id' => 3, 'name' => 'Kitchen Appliances', 'slug' => Str::slug('Kitchen Appliances'), 'image' => 'kitchen-appliances.jpg', 'status' => 1],
         ];
         DB::table('categories')->insert($categories);
+
+        /**---------------------------------------------------
+         * Attribute
+         * ---------------------------------------------------
+         */
+        // 1. Create Color attribute
+        $color = Attribute::updateOrCreate(
+            ['name' => 'Color'],
+            ['display_type' => 'color', 'has_image' => false]
+        );
+
+        // 12 colors
+        $colors = [
+            'Red', 'Blue', 'Green', 'Yellow', 'Black', 'White',
+            'Orange', 'Purple', 'Pink', 'Brown', 'Gray', 'Cyan'
+        ];
+
+        foreach ($colors as $index => $colorName) {
+            AttributeItem::updateOrCreate(
+                ['attribute_id' => $color->id, 'name' => $colorName],
+                ['sort_order' => $index + 1]
+            );
+        }
+
+        // 2. Create Size attribute
+        $size = Attribute::updateOrCreate(
+            ['name' => 'Size'],
+            ['display_type' => 'dropdown', 'has_image' => false]
+        );
+
+        $sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+
+        foreach ($sizes as $index => $sizeName) {
+            AttributeItem::updateOrCreate(
+                ['attribute_id' => $size->id, 'name' => $sizeName],
+                ['sort_order' => $index + 1]
+            );
+        }
+
+        /**---------------------------------------------------
+         * Attribute
+         * ---------------------------------------------------
+         */
 
     }
 }

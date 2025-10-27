@@ -19,9 +19,6 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->timestamps();
 
-            // Ensure unique combination of variant and attribute
-            $table->unique(['product_variant_id', 'attribute_id']);
-
             // Index for better performance
             $table->index(['attribute_id', 'attribute_item_id']);
             $table->index('product_variant_id');

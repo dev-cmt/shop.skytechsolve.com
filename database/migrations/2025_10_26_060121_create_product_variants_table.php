@@ -17,13 +17,10 @@ return new class extends Migration
             $table->string('sku')->unique();
             $table->decimal('price', 10, 2)->default(0.00);
             $table->decimal('purchase_cost', 10, 2)->default(0.00);
-            $table->integer('stock')->default(0);
-            $table->string('image')->nullable();
-            $table->boolean('status')->default(true);
+            $table->integer('quantity')->default(0);
             $table->timestamps();
 
-            $table->index(['product_id', 'status']);
-            $table->index('sku');
+            $table->index(['product_id', 'sku']);
         });
     }
 

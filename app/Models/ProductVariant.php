@@ -13,13 +13,13 @@ class ProductVariant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id', 'sku', 'price', 'stock', 'image', 'status'
+        'product_id', 'sku', 'price', 'purchase_cost', 'quantity'
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
-        'stock' => 'integer',
-        'status' => 'boolean',
+        'purchase_cost' => 'decimal:2',
+        'quantity' => 'integer',
     ];
 
     // Relationships
@@ -38,12 +38,6 @@ class ProductVariant extends Model
         return $this->belongsToMany(AttributeItem::class, 'product_variant_items')
                     ->withPivot('image')
                     ->withTimestamps();
-    }
-
-    // Scopes
-    public function scopeActive($query)
-    {
-        return $query->where('status', true);
     }
 
     public function scopeInStock($query)

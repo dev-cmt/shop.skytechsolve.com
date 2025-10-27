@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('product_discounts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->enum('discount_type', ['percentage', 'flat']);
-            $table->decimal('amount', 10, 2);
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->enum('discount_type', ['percentage', 'flat'])->nullable();
+            $table->decimal('amount', 10, 2)->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
             $table->boolean('status')->default(true);
             $table->timestamps();
         });

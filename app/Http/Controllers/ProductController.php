@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
+use App\Helper\ImageHelper;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
 use App\Models\Tag;
 use App\Models\Attribute;
+use App\Models\AttributeItem;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantItem;
 use App\Models\ProductDiscount;
@@ -23,6 +26,12 @@ class ProductController extends Controller
 {
     public function index()
     {
+        $products = Product::orderBy('id','desc')->paginate(2);
+        return view('backend.products.index', compact('products'));
+    }
+
+    public function create()
+    {
         $products = Product::orderBy('id','desc')->get();
         $categories = Category::orderBy('id','desc')->get();
         $brands = Brand::orderBy('id','desc')->get();
@@ -30,24 +39,66 @@ class ProductController extends Controller
         $attributes = Attribute::orderBy('id','desc')->get();
         $shippingClasses = ShippingClass::where('status', 1)->orderBy('name')->get();
 
-        return view('backend.products.index', compact('products', 'categories', 'brands', 'tags', 'attributes', 'shippingClasses'));
+        return view('backend.products.create', compact('products', 'categories', 'brands', 'tags', 'attributes', 'shippingClasses'));
     }
 
     public function store(Request $request)
     {
-        // DB::beginTransaction();
-        // try {
-            $data = $request->all();
+        $data = $request->all();
+        DB::transaction(function() use ($data, $request) {
+            // 1. Create Product
             $product = Product::create($data);
 
-            DB::commit();
+            // 2. Variants
+            if (!empty($data['variants'])) {
+                foreach ($data['variants']['sku'] as $i => $sku) {
+                    $variant = $product->variants()->create([
+                        'sku' => $sku,
+                        'price' => $data['variants']['price'][$i] ?? 0,
+                        'purchase_cost' => $data['variants']['purchase_cost'][$i] ?? 0,
+                        'quantity' => $data['variants']['quantity'][$i] ?? 0
+                    ]);
 
-            return redirect()->route('products.index')->with('success', 'Product created successfully.');
+                    // 3. Attribute items for this variant
+                    if (!empty($data['attribute_items'])) {
+                        foreach ($data['attribute_items'] as $attrId => $items) {
+                            foreach ($items as $itemId) {
+                                $variant->variantItems()->create([
+                                    'attribute_id' => $attrId,
+                                    'attribute_item_id' => $itemId,
+                                    'image' => 'image.png'
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
 
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
-        // }
+            // 3. Create Discount
+            $discountData = Arr::only($data, ['discount_type', 'amount', 'start_date', 'end_date']);
+            if (!empty($discountData) && Arr::whereNotNull($discountData)) {
+                $product->discounts()->create($discountData);
+            }
+
+            // 4. Create Shipping
+            $shippingData = Arr::only($data, ['weight', 'length', 'width', 'height', 'shipping_cost']);
+            if (!empty($shippingData) && Arr::whereNotNull($shippingData)) {
+                $product->shipping()->create($shippingData);
+            }
+
+            // 5. Create SEO
+            if ($request->hasFile('meta_image')) {
+                $data['og_image'] = ImageHelper::uploadImage($request->file('meta_image'), 'uploads/seo');
+            }
+            $seoData = Arr::only($data, ['meta_title', 'meta_description', 'meta_keywords', 'og_image']);
+            if (!empty($seoData) && Arr::whereNotNull($seoData)) {
+                $product->seo()->create($seoData);
+            }
+
+        });
+
+        // Redirect
+        return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
 
     public function edit(Product $product)
@@ -123,8 +174,8 @@ class ProductController extends Controller
     public function getVariantCombinations(Request $request)
     {
         $skuPrefix = $request->input('sku_prefix', 'SKU');
-        $price = $request->input('sale_price', 0);
-        $purchase_cost = $request->input('purchase_price', 0);
+        $sale_price = $request->input('sale_price', 0);
+        $purchase_price = $request->input('purchase_price', 0);
         $attributes = collect($request->input('attributes', []))->filter(fn($a) => !empty($a['items']))->values();
 
         if ($attributes->isEmpty()) {
@@ -134,7 +185,7 @@ class ProductController extends Controller
         // Collect items for cartesian
         $combos = $this->cartesianProduct($attributes->pluck('items')->toArray());
 
-        $variants = collect($combos)->map(function ($combo) use ($skuPrefix, $price, $purchase_price) {
+        $variants = collect($combos)->map(function ($combo) use ($skuPrefix, $sale_price, $purchase_price) {
             $names = [];
             foreach ($combo as $id) {
                 $item = AttributeItem::find($id);
@@ -146,8 +197,8 @@ class ProductController extends Controller
             return [
                 'name' => implode(' | ', $names),
                 'sku' => $sku,
-                'price' => $price,
-                'purchase_price' => $purchase_price > 0 ? $purchase_price : $price * 0.75,
+                'price' => $sale_price,
+                'purchase_cost' => $purchase_price > 0 ? $purchase_price : $sale_price * 0.75,
                 'quantity' => 0,
             ];
         });

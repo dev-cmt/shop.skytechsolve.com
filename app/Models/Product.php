@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Str;
 
 class Product extends Model
@@ -90,14 +92,22 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
-    public function discounts(): HasMany
+    public function discount(): HasOne
     {
-        return $this->hasMany(ProductDiscount::class);
+        return $this->hasOne(ProductDiscount::class);
     }
 
     public function shipping(): HasOne
     {
         return $this->hasOne(ProductShipping::class);
+    }
+    public function seo(): MorphOne
+    {
+        return $this->morphOne(Seo::class, 'seoable');
+    }
+    public function media(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'parent');
     }
 
     public function attributes()
