@@ -94,7 +94,6 @@ class ProductController extends Controller
             if (!empty($seoData) && Arr::whereNotNull($seoData)) {
                 $product->seo()->create($seoData);
             }
-
         });
 
         // Redirect
@@ -117,37 +116,76 @@ class ProductController extends Controller
 
         try {
             $data = $request->all();
-            $data['slug'] = Str::slug($data['name']);
 
+            // --- 1. Update Product ---
+            $data['slug'] = Str::slug($data['name']);
             $product->update($data);
 
-            // Sync attributes
+            // --- 2. Update Attributes ---
             if ($request->has('attribute_id')) {
                 ProductAttribute::where('product_id', $product->id)->delete();
                 foreach ($request->attribute_id as $attributeId) {
                     ProductAttribute::create([
                         'product_id' => $product->id,
-                        'attribute_id' => $attributeId
+                        'attribute_id' => $attributeId,
                     ]);
                 }
             }
 
-            // Sync variants
-            if ($request->has('variants')) {
+            // --- 3. Update Variants ---
+            if ($request->has('variants') && isset($request->variants['sku'])) {
                 ProductVariant::where('product_id', $product->id)->delete();
-                foreach ($request->variants as $variant) {
-                    ProductVariant::create([
+
+                foreach ($request->variants['sku'] as $i => $sku) {
+                    $variant = ProductVariant::create([
                         'product_id' => $product->id,
-                        'sku' => $variant['sku'],
-                        'price' => $variant['price'],
-                        'stock' => $variant['stock'],
-                        'attribute_items' => json_encode($variant['attributes'] ?? [])
+                        'sku' => $sku,
+                        'price' => $request->variants['price'][$i] ?? 0,
+                        'purchase_cost' => $request->variants['purchase_cost'][$i] ?? 0,
+                        'quantity' => $request->variants['quantity'][$i] ?? 0,
                     ]);
+
+                    // --- 3.1 Attribute Items for each variant ---
+                    if (!empty($request->attribute_items)) {
+                        foreach ($request->attribute_items as $attrId => $items) {
+                            foreach ($items as $itemId) {
+                                $variant->variantItems()->create([
+                                    'attribute_id' => $attrId,
+                                    'attribute_item_id' => $itemId,
+                                    'image' => 'image.png',
+                                ]);
+                            }
+                        }
+                    }
                 }
+            }
+
+            // --- 4. Update Discount ---
+            $discountData = Arr::only($data, ['discount_type', 'amount', 'start_date', 'end_date']);
+            if (Arr::whereNotNull($discountData)) {
+                $product->discounts()->delete();
+                $product->discounts()->create($discountData);
+            }
+
+            // --- 5. Update Shipping ---
+            $shippingData = Arr::only($data, ['weight', 'length', 'width', 'height', 'shipping_cost']);
+            if (Arr::whereNotNull($shippingData)) {
+                $product->shipping()->delete();
+                $product->shipping()->create($shippingData);
+            }
+
+            // --- 6. Update SEO ---
+            if ($request->hasFile('meta_image')) {
+                $data['og_image'] = ImageHelper::uploadImage($request->file('meta_image'), 'uploads/seo');
+            }
+
+            $seoData = Arr::only($data, ['meta_title', 'meta_description', 'meta_keywords', 'og_image']);
+            if (Arr::whereNotNull($seoData)) {
+                $product->seo()->delete();
+                $product->seo()->create($seoData);
             }
 
             DB::commit();
-
             return redirect()->route('products.index')->with('success', 'Product updated successfully.');
 
         } catch (\Exception $e) {
@@ -156,7 +194,17 @@ class ProductController extends Controller
         }
     }
 
+    public function destroy(Product $product)
+    {
+        $product->delete();
+        return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+    }
 
+    /**
+     * ----------------------------------------------------------------------
+     * Get attribute items based on selected attribute IDs
+     * ----------------------------------------------------------------------
+     */
     public function getItems(Request $request)
     {
         $attributeIds = $request->get('attribute_ids', []);
@@ -205,7 +253,6 @@ class ProductController extends Controller
 
         return view('backend.products.partials._variant_table', compact('variants'))->render();
     }
-
     private function cartesianProduct($arrays)
     {
         $result = [[]];
@@ -220,4 +267,5 @@ class ProductController extends Controller
         }
         return $result;
     }
+
 }

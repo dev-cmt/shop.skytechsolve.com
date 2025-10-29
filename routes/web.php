@@ -15,7 +15,9 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\AttributeController;
+use App\Http\Controllers\SitemapController;
 
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
 Route::get('/cc', function () {
     \Illuminate\Support\Facades\Artisan::call('cache:clear');
     \Illuminate\Support\Facades\Artisan::call('config:clear');
