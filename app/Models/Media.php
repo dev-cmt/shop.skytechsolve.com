@@ -19,7 +19,8 @@ class Media extends Model
         'type',
         'alt_text',
         'size',
-        'sort_order'
+        'sort_order',
+        'user_id'
     ];
 
     protected $casts = [
