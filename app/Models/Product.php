@@ -57,24 +57,6 @@ class Product extends Model
     ];
 
     /**
-     * Default values
-     */
-    protected $attributes = [
-        'sku_prefix' => 'PROD',
-        'sale_price' => 0.00,
-        'purchase_price' => 0.00,
-        'stock_status' => 'in_stock',
-        'total_stock' => 0,
-        'stock_out' => 0,
-        'alert_quantity' => 0,
-        'product_type' => 'regular',
-        'visibility' => 'public',
-        'views' => 0,
-        'has_variant' => false,
-        'status' => true,
-    ];
-
-    /**
      * Relationships
      */
     public function category()
@@ -110,9 +92,28 @@ class Product extends Model
         return $this->morphMany(Media::class, 'parent');
     }
 
+    // Attributes through variant items
     public function attributes()
     {
-        return $this->hasManyThrough(Attribute::class, ProductVariantItem::class, 'product_variant_id', 'id', 'id', 'attribute_id');
+        return $this->belongsToMany(
+            Attribute::class,
+            'product_variant_items',
+            'product_variant_id',
+            'attribute_id'
+        )->distinct();
+    }
+
+    // Attribute items through variants
+    public function attributeItems()
+    {
+        return $this->hasManyThrough(
+            AttributeItem::class,
+            ProductVariantItem::class,
+            'product_variant_id', // FK on variant items
+            'id', // PK on attribute items
+            'id', // PK on product (via variant)
+            'attribute_item_id' // FK on variant items
+        );
     }
 
     // Scopes

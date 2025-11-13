@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->enum('display_type', ['text', 'color', 'image', 'dropdown'])->default('text');
             $table->boolean('has_image')->default(false);
+            $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }

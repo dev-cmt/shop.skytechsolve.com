@@ -6,7 +6,7 @@
             <nav>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('products.index') }}">Products</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('products.index') }}">Product</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Add New</li>
                 </ol>
             </nav>
@@ -158,7 +158,8 @@
                                             <!-- Discount Status -->
                                             <div class="mt-4 border-top pt-3">
                                                 <div class="form-check form-switch">
-                                                    <input class="form-check-input" name="discount_status" type="checkbox" id="discountStatusToggle">
+                                                    <input class="form-check-input" name="discount_status" type="checkbox" id="discountStatusToggle"
+                                                    {{ old('discount_status' ? true : false) ? 'checked' : '' }}>
                                                     <label class="form-check-label" for="discountStatusToggle">Enable Discount</label>
                                                 </div>
                                             </div>
@@ -168,10 +169,19 @@
                                     <div class="tab-pane text-muted" id="about-vertical-link" role="tabpanel">
                                         <!-- Weight -->
                                         <div class="mb-2">
-                                            <label for="weight" class="form-label">Weight (kg)</label>
+                                            <div class="d-flex justify-content-between">
+                                                <label for="weight" class="form-label">Weight (kg)</label>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" name="free_shipping" type="checkbox" id="freeShippingToggle"
+                                                    {{ old('free_shipping' ? true : false) ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="freeShippingToggle">Free Shipping</label>
+                                                </div>
+                                            </div>
                                             <input type="number" class="form-control" id="weight" name="weight" placeholder="0.00" value="{{ old('weight') }}" step="0.01" min="0">
                                             @error('weight') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                         </div>
+
+                                        <!-- Dimensions -->
                                         <div class="border p-1 mb-2 bg-light">
                                             <label class="form-label mb-2 d-block">Dimensions (cm)</label>
                                             <div class="row g-2">
@@ -189,34 +199,54 @@
                                                 <div class="text-danger mt-1">Please check all dimension fields.</div>
                                             @endif
                                         </div>
-                                        <div class="row">
-                                            <div class="col-6">
+
+                                        <!-- Shipping Class & Rates -->
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
                                                 <label class="form-label">Shipping Class</label>
-                                                <select id="shipping_class" class="form-select">
-                                                    <option value="">Select Shipping Class</option>
+                                                <select id="shipping_class_id" name="shipping_class_id" class="form-select">
                                                     @foreach($shippingClasses ?? [] as $class)
-                                                        <option value="{{ $class->id }}" data-inside="{{ $class->inside_rate }}" data-outside="{{ $class->outside_rate }}"
-                                                            {{ old('shipping_class') == $class->id ? 'selected' : '' }}>
-                                                            {{ $class->name }}
+                                                        <option value="{{ $class->id }}"
+                                                            {{ old('shipping_class_id') == $class->id ? 'selected' : '' }}
+                                                            data-inside="{{ $class->inside_rate }}"
+                                                            data-outside="{{ $class->outside_rate }}"> {{ $class->name }}
                                                         </option>
                                                     @endforeach
                                                 </select>
                                             </div>
-                                            <div class="col-3">
+
+                                            <div class="col-md-3">
                                                 <label class="form-label">Inside City Rate</label>
-                                                <input type="text" id="inside_rate_display" class="form-control form-control-sm" readonly>
+                                                <div class="input-group input-group-sm mb-3">
+                                                    <span class="input-group-text">৳</span>
+                                                    <input type="text" name="inside_city_rate" id="inside_rate_display" class="form-control form-control-sm" readonly value="{{ old('inside_city_rate', '0') }}">
+                                                </div>
                                             </div>
-                                            <div class="col-3">
+
+                                            <div class="col-md-3">
                                                 <label class="form-label">Outside City Rate</label>
-                                                <input type="text" id="outside_rate_display" class="form-control form-control-sm" readonly>
+                                                <div class="input-group input-group-sm mb-3">
+                                                    <span class="input-group-text">৳</span>
+                                                    <input type="text" name="outside_city_rate" id="outside_rate_display" class="form-control form-control-sm" readonly value="{{ old('outside_city_rate', '0') }}">
+                                                </div>
                                             </div>
                                         </div>
 
                                         <script>
-                                            const s=document.getElementById('shipping_class'),i=document.getElementById('inside_rate_display'),o=document.getElementById('outside_rate_display');
-                                            function u(){const e=s.selectedOptions[0];i.value=`৳ ${e?.dataset.inside||0}`,o.value=`৳ ${e?.dataset.outside||0}`}
-                                            s.addEventListener('change',u),u();
+                                            const shippingSelect = document.getElementById('shipping_class_id');
+                                            const insideRate = document.getElementById('inside_rate_display');
+                                            const outsideRate = document.getElementById('outside_rate_display');
+
+                                            function updateRates() {
+                                                const selected = shippingSelect.selectedOptions[0];
+                                                if (!insideRate.value || insideRate.value === '0') insideRate.value = selected ? selected.dataset.inside : 0;
+                                                if (!outsideRate.value || outsideRate.value === '0') outsideRate.value = selected ? selected.dataset.outside : 0;
+                                            }
+
+                                            shippingSelect.addEventListener('change', updateRates);
+                                            updateRates(); // initialize on page load
                                         </script>
+
                                     </div>
                                     <div class="tab-pane text-muted" id="contacts-vertical-link" role="tabpanel">
                                         <div class="mb-1">
@@ -233,6 +263,11 @@
                                             <label for="meta_keywords" class="form-label">Meta Keywords</label>
                                             <input type="text" class="form-control" id="meta_keywords" name="meta_keywords" value="{{ old('meta_keywords') }}" placeholder="Separate keywords with commas">
                                             @error('meta_keywords') <div class="text-danger mt-1">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="mb-1">
+                                            <label for="meta_image" class="form-label">Meta Image</label>
+                                            <input type="file" class="form-control" id="meta_image" name="meta_image" placeholder="Meta Image">
+                                            @error('meta_image') <div class="text-danger mt-1">{{ $message }}</div> @enderror
                                         </div>
                                     </div>
                                 </div>
@@ -251,20 +286,12 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Attributes</label>
-                                <select name="attribute_id[]" id="attribute_id" class="form-select" multiple>
+                                <select name="attribute_id[]" id="attribute_id" class="form-select searchable" multiple>
                                     @foreach($attributes as $attribute)
                                         <option value="{{ $attribute->id }}">{{ $attribute->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            {{-- <div class="col-md-4">
-                                <label class="form-label">SKU Prefix</label>
-                                <input type="text" id="sku_prefix" class="form-control" placeholder="SKU" value="SKU">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Base Price</label>
-                                <input type="number" id="price" class="form-control" placeholder="0.00" value="0.00">
-                            </div> --}}
                         </div>
 
                         <div id="attribute_items_container" class="row"></div>
@@ -281,7 +308,6 @@
                 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
                 <script>
                     $(function() {
-
                         // Initialize Choices.js dropdowns
                         function initChoices() {
                             const makeChoice = (el) => new Choices(el, {
@@ -290,11 +316,6 @@
                                 placeholderValue: 'Select Items'
                             });
 
-                            if (!$('#attribute_id').data('choices-initialized')) {
-                                makeChoice('#attribute_id');
-                                $('#attribute_id').data('choices-initialized', true);
-                            }
-
                             $('.attribute-item').each(function() {
                                 if (!$(this).data('choices-initialized')) {
                                     makeChoice(this);
@@ -302,7 +323,6 @@
                                 }
                             });
                         }
-
 
                         // Load attribute items (e.g. Color, Size options)
                         function loadAttributeItems() {
@@ -376,23 +396,23 @@
                         // --------------------
                         $('#attribute_id').on('change', loadAttributeItems);
 
-                        // When user selects attribute items (e.g., colors or sizes)
-                        $(document).on('change', '.attribute-item', function() {
-                            loadVariantCombinations();
-                            updateImageUploadFields(); // 👈 Add this
+                            // When user selects attribute items (e.g., colors or sizes)
+                            $(document).on('change', '.attribute-item', function() {
+                                loadVariantCombinations();
+                                updateImageUploadFields(); // 👈 Add this
+                            });
+
+                            // When SKU or Price changes, refresh variant combinations
+                            $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price', loadVariantCombinations);
+
+                            // Remove variant row
+                            $(document).on('click', '.remove-variant', function() {
+                                $(this).closest('tr').remove();
+                            });
+
+                            // Initialize on page load
+                            initChoices();
                         });
-
-                        // When SKU or Price changes, refresh variant combinations
-                        $(document).on('keyup change', '#sku_prefix,#price,#purchase_price', loadVariantCombinations);
-
-                        // Remove variant row
-                        $(document).on('click', '.remove-variant', function() {
-                            $(this).closest('tr').remove();
-                        });
-
-                        // Initialize on page load
-                        initChoices();
-                    });
                     </script>
 
                 @endpush
@@ -413,7 +433,7 @@
                     </div>
                     <div class="card-body pt-1">
                         <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
-                        <select name="category_id" id="category_id" class="form-select" required>
+                        <select name="category_id" id="category_id" class="form-select searchable" data-placeholder="Select Category" required>
                             <option value="">Select Category</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" {{ old('category_id')==$category->id ? 'selected' : '' }}>{{ $category->name }}</option>
@@ -430,7 +450,7 @@
                     </div>
                     <div class="card-body pt-1">
                         <label for="brand_id" class="form-label">Brand</label>
-                        <select name="brand_id" id="brand_id" class="form-select">
+                        <select name="brand_id" id="brand_id" class="form-select searchable" data-placeholder="Select Brand">
                             <option value="">Select Brand</option>
                             @foreach($brands as $brand)
                                 <option value="{{ $brand->id }}" {{ old('brand_id')==$brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
@@ -447,7 +467,7 @@
                     </div>
                     <div class="card-body pt-1">
                         <label for="brand_id" class="form-label">Tag</label>
-                        <select name="brand_id" id="brand_id" class="form-select">
+                        <select name="brand_id" id="brand_id" class="form-select searchable" multiple data-placeholder="Select Tags">
                             <option value="">Select Tag</option>
                             @foreach($brands as $brand)
                                 <option value="{{ $brand->id }}" {{ old('brand_id')==$brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
@@ -502,23 +522,19 @@
         </div>
     </form>
 
-    <!-- JS for variants -->
+    @push('js')
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const addVariantBtn = document.getElementById('add-variant');
-            const variantsContainer = document.getElementById('variants-container');
-            const variantTemplate = document.getElementById('variant-template').content;
-
-            addVariantBtn.addEventListener('click', () => {
-                const clone = variantTemplate.cloneNode(true);
-                variantsContainer.appendChild(clone);
-            });
-
-            variantsContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('remove-variant') || e.target.closest('.remove-variant')) {
-                    e.target.closest('.variant-item').remove();
-                }
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('select.searchable').forEach(select => {
+                new Choices(select, {
+                    searchEnabled: true,
+                    shouldSort: false,
+                    removeItemButton: true, // allow removing selected tags
+                    placeholder: true,
+                    placeholderValue: select.dataset.placeholder || 'Select an option'
+                });
             });
         });
     </script>
+    @endpush
 </x-backend-layout>

@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Arr;
-use App\Helper\ImageHelper;
+use App\Helpers\ImageHelper;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
@@ -32,14 +32,13 @@ class ProductController extends Controller
 
     public function create()
     {
-        $products = Product::orderBy('id','desc')->get();
-        $categories = Category::orderBy('id','desc')->get();
-        $brands = Brand::orderBy('id','desc')->get();
-        $tags = Tag::orderBy('id','desc')->get();
-        $attributes = Attribute::orderBy('id','desc')->get();
-        $shippingClasses = ShippingClass::where('status', 1)->orderBy('name')->get();
+        $categories = Category::orderBy('name')->where('status', 1)->get();
+        $brands = Brand::orderBy('name')->where('status', 1)->get();
+        $tags = Tag::orderBy('name')->get();
+        $attributes = Attribute::orderBy('name')->where('status', 1)->get();
+        $shippingClasses = ShippingClass::orderBy('id','asc')->where('status', 1)->get();
 
-        return view('backend.products.create', compact('products', 'categories', 'brands', 'tags', 'attributes', 'shippingClasses'));
+        return view('backend.products.create', compact('categories', 'brands', 'tags', 'attributes', 'shippingClasses'));
     }
 
     public function store(Request $request)
@@ -75,14 +74,20 @@ class ProductController extends Controller
             }
 
             // 3. Create Discount
-            $discountData = Arr::only($data, ['discount_type', 'amount', 'start_date', 'end_date']);
-            if (!empty($discountData) && Arr::whereNotNull($discountData)) {
-                $product->discounts()->create($discountData);
+            $discountData = array_filter(
+                Arr::only($data, ['discount_type','amount','start_date','end_date']) + ['status' => (int)($data['discount_status'] ?? 0)],
+                fn($v) => $v !== null // Keep 0
+            );
+            if ($discountData) {
+                $product->discount()->create($discountData);
             }
 
             // 4. Create Shipping
-            $shippingData = Arr::only($data, ['weight', 'length', 'width', 'height', 'shipping_cost']);
-            if (!empty($shippingData) && Arr::whereNotNull($shippingData)) {
+            $shippingData = array_filter(
+                Arr::only($data, ['weight','length','width','height','shipping_cost', 'shipping_class_id', 'inside_city_rate', 'outside_city_rate', 'free_shipping']),
+                fn($value) => $value !== null
+            );
+            if ($shippingData) {
                 $product->shipping()->create($shippingData);
             }
 
@@ -90,10 +95,11 @@ class ProductController extends Controller
             if ($request->hasFile('meta_image')) {
                 $data['og_image'] = ImageHelper::uploadImage($request->file('meta_image'), 'uploads/seo');
             }
-            $seoData = Arr::only($data, ['meta_title', 'meta_description', 'meta_keywords', 'og_image']);
-            if (!empty($seoData) && Arr::whereNotNull($seoData)) {
-                $product->seo()->create($seoData);
+            $seoData = array_filter(Arr::only($data, ['meta_title','meta_description','meta_keywords','og_image']));
+            if ($seoData) {
+                $product->seo ? $product->seo()->update($seoData) : $product->seo()->create($seoData);
             }
+
         });
 
         // Redirect
@@ -102,57 +108,52 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $categories = Category::where('status', 1)->get();
-        $brands = Brand::where('status', 1)->get();
-        $attributes = Attribute::with('items')->where('status', 1)->get();
-        $product->load(['attributes', 'variants']);
+        $categories = Category::orderBy('name')->where('status', 1)->get();
+        $brands = Brand::orderBy('name')->where('status', 1)->get();
+        $tags = Tag::orderBy('name')->get();
+        $attributes = Attribute::orderBy('name')->where('status', 1)->get();
+        $shippingClasses = ShippingClass::where('status', 1)->orderBy('id','asc')->get();
 
-        return view('backend.products.edit', compact('product', 'categories', 'brands', 'attributes'));
+        $product->load(['variants.variantItems.attribute', 'variants.variantItems.attributeItem', 'shipping', 'discount', 'seo']);
+
+        dd($product->variants->first()->variantItems->attributeItem);
+
+
+        return view('backend.products.edit', compact('product', 'categories', 'brands', 'tags', 'attributes', 'shippingClasses'));
     }
 
     public function update(Request $request, Product $product)
     {
-        DB::beginTransaction();
+        // DB::beginTransaction();
 
-        try {
+        // try {
             $data = $request->all();
+            // dd($data);
 
             // --- 1. Update Product ---
-            $data['slug'] = Str::slug($data['name']);
             $product->update($data);
 
             // --- 2. Update Attributes ---
-            if ($request->has('attribute_id')) {
-                ProductAttribute::where('product_id', $product->id)->delete();
-                foreach ($request->attribute_id as $attributeId) {
-                    ProductAttribute::create([
-                        'product_id' => $product->id,
-                        'attribute_id' => $attributeId,
-                    ]);
-                }
-            }
-
-            // --- 3. Update Variants ---
             if ($request->has('variants') && isset($request->variants['sku'])) {
-                ProductVariant::where('product_id', $product->id)->delete();
+                // Remove old variants and related items
+                $product->variants()->delete();
 
                 foreach ($request->variants['sku'] as $i => $sku) {
-                    $variant = ProductVariant::create([
-                        'product_id' => $product->id,
+                    $variant = $product->variants()->create([
                         'sku' => $sku,
                         'price' => $request->variants['price'][$i] ?? 0,
                         'purchase_cost' => $request->variants['purchase_cost'][$i] ?? 0,
                         'quantity' => $request->variants['quantity'][$i] ?? 0,
                     ]);
 
-                    // --- 3.1 Attribute Items for each variant ---
+                    // --- Attribute Items for this variant ---
                     if (!empty($request->attribute_items)) {
                         foreach ($request->attribute_items as $attrId => $items) {
                             foreach ($items as $itemId) {
                                 $variant->variantItems()->create([
                                     'attribute_id' => $attrId,
                                     'attribute_item_id' => $itemId,
-                                    'image' => 'image.png',
+                                    'image' => $request->attribute_images[$attrId][$itemId] ?? null,
                                 ]);
                             }
                         }
@@ -161,37 +162,41 @@ class ProductController extends Controller
             }
 
             // --- 4. Update Discount ---
-            $discountData = Arr::only($data, ['discount_type', 'amount', 'start_date', 'end_date']);
-            if (Arr::whereNotNull($discountData)) {
-                $product->discounts()->delete();
-                $product->discounts()->create($discountData);
+            $discountData = array_filter(
+                Arr::only($data, ['discount_type','amount','start_date','end_date']) + ['status' => (int)($data['discount_status'] ?? 0)],
+                fn($v) => $v !== null
+            );
+            if ($discountData) {
+                $product->discount ? $product->discount()->update($discountData) : $product->discount()->create($discountData);
             }
 
             // --- 5. Update Shipping ---
-            $shippingData = Arr::only($data, ['weight', 'length', 'width', 'height', 'shipping_cost']);
-            if (Arr::whereNotNull($shippingData)) {
-                $product->shipping()->delete();
-                $product->shipping()->create($shippingData);
+            $shippingData = array_filter(
+                Arr::only($data, ['weight','length','width','height','shipping_cost', 'shipping_class_id', 'inside_city_rate', 'outside_city_rate', 'free_shipping']),
+                fn($value) => $value !== null
+            );
+            if ($shippingData) {
+                $product->shipping ? $product->shipping()->update($shippingData) : $product->shipping()->create($shippingData);
             }
 
             // --- 6. Update SEO ---
-            if ($request->hasFile('meta_image')) {
-                $data['og_image'] = ImageHelper::uploadImage($request->file('meta_image'), 'uploads/seo');
+            $seoData = Arr::only($data, ['meta_title', 'meta_description', 'meta_keywords']);
+
+            if ($request->hasFile('meta_image') || !empty($data['delete_meta_image'])) {
+                if ($old = optional($product->seo)->og_image) file_exists(public_path($old)) && unlink(public_path($old));
+                $seoData['og_image'] = $request->hasFile('meta_image') ? ImageHelper::uploadImage($request->file('meta_image'), 'uploads/seo') : null;
+            }
+            if ($seoData) {
+                $product->seo ? $product->seo()->update($seoData) : $product->seo()->create($seoData);
             }
 
-            $seoData = Arr::only($data, ['meta_title', 'meta_description', 'meta_keywords', 'og_image']);
-            if (Arr::whereNotNull($seoData)) {
-                $product->seo()->delete();
-                $product->seo()->create($seoData);
-            }
-
-            DB::commit();
+            // DB::commit();
             return redirect()->route('products.index')->with('success', 'Product updated successfully.');
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
-        }
+        // } catch (\Exception $e) {
+        //     DB::rollBack();
+        //     return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
+        // }
     }
 
     public function destroy(Product $product)
