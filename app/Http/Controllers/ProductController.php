@@ -107,20 +107,73 @@ class ProductController extends Controller
     }
 
     public function edit(Product $product)
-    {
-        $categories = Category::orderBy('name')->where('status', 1)->get();
-        $brands = Brand::orderBy('name')->where('status', 1)->get();
-        $tags = Tag::orderBy('name')->get();
-        $attributes = Attribute::orderBy('name')->where('status', 1)->get();
-        $shippingClasses = ShippingClass::where('status', 1)->orderBy('id','asc')->get();
+{
+    $categories = Category::orderBy('name')->where('status', 1)->get();
+    $brands = Brand::orderBy('name')->where('status', 1)->get();
+    $tags = Tag::orderBy('name')->get();
+    $attributes = Attribute::orderBy('name')->where('status', 1)->get();
+    $shippingClasses = ShippingClass::where('status', 1)->orderBy('id', 'asc')->get();
 
-        $product->load(['variants.variantItems.attribute', 'variants.variantItems.attributeItem', 'shipping', 'discount', 'seo']);
+    $product->load([
+        'variants.variantItems.attribute',
+        'variants.variantItems.attributeItem',
+        'shipping',
+        'discount',
+        'seo'
+    ]);
 
-        dd($product->variants->first()->variantItems->attributeItem);
+    // ------------------------------------------
+    // SELECTED ATTRIBUTE IDS
+    // ------------------------------------------
+    $selectedAttributeIds = $product->variants
+        ->pluck('variantItems.*.attribute_id')
+        ->flatten()
+        ->unique()
+        ->values();
 
+    // ------------------------------------------
+    // SELECTED ATTRIBUTE ITEM IDS (group by attribute)
+    // ------------------------------------------
+    $selectedItems = [];  // <-- needed by your blade
 
-        return view('backend.products.edit', compact('product', 'categories', 'brands', 'tags', 'attributes', 'shippingClasses'));
+    foreach ($product->variants as $variant) {
+        foreach ($variant->variantItems as $item) {
+            $selectedItems[$item->attribute_id][] = $item->attribute_item_id;
+        }
     }
+
+    // remove duplicates
+    foreach ($selectedItems as $attrId => $items) {
+        $selectedItems[$attrId] = array_unique($items);
+    }
+
+    // ------------------------------------------
+    // Existing Attribute Images (if you store them)
+    // Structure:  $existingImages[attribute_id][item_id] = "path/to/img.jpg"
+    // ------------------------------------------
+    $existingImages = [];
+
+    foreach ($product->variants as $variant) {
+        foreach ($variant->variantItems as $item) {
+            if ($item->image) {
+                $existingImages[$item->attribute_id][$item->attribute_item_id] = $item->image;
+            }
+        }
+    }
+
+    return view('backend.products.edit', compact(
+        'product',
+        'categories',
+        'brands',
+        'tags',
+        'attributes',
+        'shippingClasses',
+        'selectedAttributeIds',
+        'selectedItems',          // FIXED
+        'existingImages'          // FIXED
+    ));
+}
+
 
     public function update(Request $request, Product $product)
     {
@@ -210,19 +263,49 @@ class ProductController extends Controller
      * Get attribute items based on selected attribute IDs
      * ----------------------------------------------------------------------
      */
+    // public function getItems(Request $request)
+    // {
+    //     $attributeIds = $request->get('attribute_ids', []);
+    //     if (empty($attributeIds)) {
+    //         return '';
+    //     }
+
+    //     $attributes = Attribute::with('items')
+    //         ->whereIn('id', $attributeIds)
+    //         ->get();
+
+    //     return view('backend.products.partials._attribute_items', compact('attributes'))->render();
+    // }
+
+
     public function getItems(Request $request)
     {
         $attributeIds = $request->get('attribute_ids', []);
-        if (empty($attributeIds)) {
-            return '';
+        if (empty($attributeIds)) return '';
+
+        $attributes = Attribute::with('items')->whereIn('id', $attributeIds)->get();
+
+        $selectedItems = [];
+        $existingImages = [];
+
+        // dd($request->attributeIds);
+
+        if ($request->has('product_id')) {
+            $product = Product::with('variants.variantItems')->find($request->product_id);
+            if ($product) {
+                foreach ($product->variants as $variant) {
+                    foreach ($variant->variantItems as $item) {
+                        $selectedItems[$item->attribute_id][] = $item->attribute_item_id;
+                        if ($item->image) $existingImages[$item->attribute_id][$item->attribute_item_id] = $item->image;
+                    }
+                }
+                foreach ($selectedItems as $attrId => $items) $selectedItems[$attrId] = array_unique($items);
+            }
         }
 
-        $attributes = Attribute::with('items')
-            ->whereIn('id', $attributeIds)
-            ->get();
-
-        return view('backend.products.partials._attribute_items', compact('attributes'))->render();
+        return view('backend.products.partials._attribute_items', compact('attributes','selectedItems','existingImages'))->render();
     }
+
 
     public function getVariantCombinations(Request $request)
     {

@@ -367,110 +367,152 @@
                 @push('js')
                 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
                 <script>
-                $(function() {
-                    // Initialize Choices.js for select elements
-                    function initChoices() {
-                        $('.attribute-item').each(function() {
-                            if (!$(this).data('choices-initialized')) {
-                                new Choices(this, {
-                                    removeItemButton: true,
-                                    searchEnabled: true,
-                                    placeholderValue: 'Select Items'
-                                });
-                                $(this).data('choices-initialized', true);
-                            }
-                        });
-                    }
+                    $(function() {
 
-                    // Load attribute items based on selected attributes
-                    function loadAttributeItems() {
-                        let selected = $('#attribute_id').val();
-                        if (!selected || selected.length === 0) {
-                            $('#attribute_items_container').html('');
-                            $('#variant_combinations_container').html('');
-                            return;
-                        }
-
-                        $.get('{{ route("attributes.getItems") }}', { attribute_ids: selected }, function(html) {
-                            $('#attribute_items_container').html(html);
-                            initChoices();
-                        });
-                    }
-
-                    // Generate variant combinations
-                    function loadVariantCombinations() {
-                        let attrs = [];
-                        $('.attribute-item').each(function() {
-                            let id = $(this).data('id');
-                            let items = $(this).val();
-                            if (items && items.length) attrs.push({ id, items });
-                        });
-
-                        if (!attrs.length) {
-                            $('#variant_combinations_container').html('');
-                            return;
-                        }
-
-                        $.ajax({
-                            url: '{{ route("products.getItemsCombo") }}',
-                            method: 'GET',
-                            data: {
-                                sku_prefix: $('#sku_prefix').val(),
-                                sale_price: $('#sale_price').val(),
-                                purchase_price: $('#purchase_price').val(),
-                                attributes: attrs
-                            },
-                            success: function(html) {
-                                $('#variant_combinations_container').html(html);
-                            }
-                        });
-                    }
-
-                    // Show file inputs for attributes that have images (e.g., Color)
-                    function updateImageUploadFields() {
-                        $('.attribute-item').each(function() {
-                            let hasImage = $(this).data('has-image');
-                            if (!hasImage) return;
-
-                            let attrId = $(this).data('id');
-                            let container = $('.image-upload-container[data-attr-id="' + attrId + '"] .image-upload-fields');
-                            container.html('');
-
-                            $(this).find('option:selected').each(function() {
-                                let itemId = $(this).val();
-                                let itemName = $(this).text();
-
-                                container.append(`
-                                    <div class="d-flex align-items-center mb-2 single-upload-field" data-item-id="${itemId}">
-                                        <span class="me-2 fw-semibold text-secondary" style="min-width:80px">${itemName}</span>
-                                        <input type="file" name="attribute_images[${attrId}][${itemId}]" class="form-control form-control-sm" accept="image/*">
-                                    </div>
-                                `);
+                        // Initialize Choices.js for select elements
+                        function initChoices() {
+                            $('.attribute-item').each(function() {
+                                if (!$(this).data('choices-initialized')) {
+                                    new Choices(this, {
+                                        removeItemButton: true,
+                                        searchEnabled: true,
+                                        placeholderValue: 'Select Items'
+                                    });
+                                    $(this).data('choices-initialized', true);
+                                }
                             });
+                        }
+
+                        // Load attribute items based on selected attributes
+                        function loadAttributeItems(loadExisting = true) {
+                            let selected = $('#attribute_id').val();
+                            if (!selected || selected.length === 0) {
+                                $('#attribute_items_container').html('');
+                                $('#variant_combinations_container').html('');
+                                return;
+                            }
+
+                            $.get('{{ route("attributes.getItems") }}', { attribute_ids: selected }, function(html) {
+
+                                // Insert full HTML block (which includes selected items/images)
+                                $('#attribute_items_container').html(html);
+
+                                initChoices();
+
+                                // If editing product => load variant combinations
+                                if (loadExisting) {
+                                    setTimeout(() => {
+                                        updateImageUploadFields();
+                                        loadVariantCombinations();
+                                    }, 300);
+                                }
+
+                            });
+                        }
+
+                        // Generate variant combinations
+                        function loadVariantCombinations() {
+                            let attrs = [];
+                            $('.attribute-item').each(function() {
+
+                                let id = $(this).data('id');
+                                let items = $(this).val();
+
+                                if (items && items.length)
+                                    attrs.push({ id, items });
+                            });
+
+                            if (!attrs.length) {
+                                $('#variant_combinations_container').html('');
+                                return;
+                            }
+
+                            $.ajax({
+                                url: '{{ route("products.getItemsCombo") }}',
+                                method: 'GET',
+                                data: {
+                                    sku_prefix: $('#sku_prefix').val(),
+                                    sale_price: $('#sale_price').val(),
+                                    purchase_price: $('#purchase_price').val(),
+                                    attributes: attrs,
+
+                                    product_id: '{{ $product->id }}', // important for EDIT existing variants
+                                },
+                                success: function(html) {
+                                    $('#variant_combinations_container').html(html);
+                                }
+                            });
+                        }
+
+                        // Show file inputs for attributes that have images (e.g., Color)
+                        function updateImageUploadFields() {
+
+                            $('.attribute-item').each(function() {
+
+                                let hasImage = $(this).data('has-image');
+                                if (!hasImage) return;
+
+                                let attrId = $(this).data('id');
+                                let container = $('.image-upload-container[data-attr-id="' + attrId + '"] .image-upload-fields');
+
+                                // DO NOT CLEAR when editing because existing images already loaded
+                                // container.html('');
+
+                                // Append new fields only for newly selected items
+                                $(this).find('option:selected').each(function() {
+
+                                    let itemId = $(this).val();
+
+                                    if (container.find('[data-item-id="'+itemId+'"]').length) return;
+
+                                    let itemName = $(this).text();
+
+                                    container.append(`
+                                        <div class="d-flex align-items-center mb-2 single-upload-field"
+                                            data-item-id="${itemId}">
+
+                                            <span class="me-2 fw-semibold text-secondary" style="min-width:80px">
+                                                ${itemName}
+                                            </span>
+
+                                            <input type="file"
+                                                name="attribute_images[${attrId}][${itemId}]"
+                                                class="form-control form-control-sm"
+                                                accept="image/*">
+                                        </div>
+                                    `);
+                                });
+
+                            });
+                        }
+
+                        // Event bindings
+                        $('#attribute_id').on('change', function() {
+                            loadAttributeItems(false); // false = do not auto-load combinations
+                            $('#variant_combinations_container').html('');
                         });
-                    }
 
-                    // Event bindings
-                    $('#attribute_id').on('change', function() {
-                        loadAttributeItems();
-                        $('#variant_combinations_container').html('');
+                        $(document).on('change', '.attribute-item', function() {
+                            updateImageUploadFields();
+                            loadVariantCombinations();
+                        });
+
+                        $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price', loadVariantCombinations);
+
+                        $(document).on('click', '.remove-variant', function() {
+                            $(this).closest('tr').remove();
+                        });
+
+                        // Initialize Choices for Attributes
+                        new Choices('#attribute_id', {
+                            removeItemButton: true,
+                            searchEnabled: true
+                        });
+
+                        // FIRST LOAD (EDIT MODE) — load items + combinations
+                        loadAttributeItems(true);
+
                     });
-
-                    $(document).on('change', '.attribute-item', function() {
-                        loadVariantCombinations();
-                        updateImageUploadFields();
-                    });
-
-                    $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price', loadVariantCombinations);
-
-                    $(document).on('click', '.remove-variant', function() {
-                        $(this).closest('tr').remove();
-                    });
-
-                    // Initialize on page load
-                    initChoices();
-                    loadAttributeItems(); // load items if editing existing product
-                });
                 </script>
                 @endpush
 

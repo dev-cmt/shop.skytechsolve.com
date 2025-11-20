@@ -1,0 +1,201 @@
+<!--backend.products.partisals._attribute_items.blade.php-->
+@foreach ($attributes as $attribute)
+    <div class="col-md-4 mb-2 attribute-item-wrapper">
+        <label class="form-label">{{ $attribute->name }} Items</label>
+        <select class="form-select attribute-item searchable" data-id="{{ $attribute->id }}"
+            data-name="{{ $attribute->name }}" data-has-image="{{ $attribute->has_image ? 1 : 0 }}" multiple
+            name="attribute_items[{{ $attribute->id }}][]">
+            @foreach ($attribute->items as $item)
+                <option value="{{ $item->id }}">{{ $item->name }}</option>
+            @endforeach
+        </select>
+
+        @if ($attribute->has_image)
+            <div class="image-upload-container" data-attr-id="{{ $attribute->id }}">
+                <label class="form-label fw-semibold">Upload Images for {{ $attribute->name }}</label>
+                <div class="image-upload-fields border rounded p-2 bg-light"></div>
+            </div>
+        @endif
+    </div>
+@endforeach
+
+
+<!-- backend.products.partisals._variant_table.blade.php -->
+@php
+    $variants = $variants ?? [
+        ['name' => '', 'sku' => '', 'price' => 0, 'purchase_cost' => 0, 'quantity' => 0]
+    ];
+@endphp
+
+@if(count($variants))
+<table class="table table-sm table-bordered">
+    <thead>
+        <tr>
+            <th>Variant Name</th>
+            <th>SKU</th>
+            <th>Price</th>
+            <th>Purchase Price</th>
+            <th>Quantity</th>
+            <th class="text-center">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($variants as $variant)
+        <tr>
+            <td>{{ $variant['name'] }}</td>
+            <td><input type="text" name="variants[sku][]" class="form-control form-control-sm" value="{{ $variant['sku'] }}"></td>
+            <td><input type="number" name="variants[price][]" class="form-control form-control-sm" value="{{ $variant['price'] }}"></td>
+            <td><input type="number" name="variants[purchase_cost][]" class="form-control form-control-sm" value="{{ $variant['purchase_cost'] }}"></td>
+            <td><input type="number" name="variants[quantity][]" class="form-control form-control-sm" value="{{ $variant['quantity'] }}"></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-variant">X</button>
+            </td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+@endif
+
+
+
+
+<!-- Product Variants -->
+                <div class="card custom-card">
+                    <div class="card-header">
+                        <div class="card-title">Product Variants Preview</div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Attributes</label>
+                                <select name="attribute_id[]" id="attribute_id" class="form-select searchable" multiple>
+                                    @foreach($attributes as $attribute)
+                                        <option value="{{ $attribute->id }}">{{ $attribute->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="attribute_items_container" class="row"></div>
+
+                        <div id="variant_combinations_container"></div>
+                    </div>
+                </div>
+
+                @push('css')
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+                @endpush
+
+                @push('js')
+                <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+                <script>
+                    $(function() {
+                        // Initialize Choices.js dropdowns
+                        function initChoices() {
+                            const makeChoice = (el) => new Choices(el, {
+                                removeItemButton: true,
+                                searchEnabled: true,
+                                placeholderValue: 'Select Items'
+                            });
+
+                            $('.attribute-item').each(function() {
+                                if (!$(this).data('choices-initialized')) {
+                                    makeChoice(this);
+                                    $(this).data('choices-initialized', true);
+                                }
+                            });
+                        }
+
+                        // Load attribute items (e.g. Color, Size options)
+                        function loadAttributeItems() {
+                            let selected = $('#attribute_id').val();
+                            if (!selected || selected.length === 0) {
+                                $('#attribute_items_container').html('');
+                                $('#variant_combinations_container').html('');
+                                return;
+                            }
+
+                            $.get('{{ route("attributes.getItems") }}', { attribute_ids: selected }, function(html) {
+                                $('#attribute_items_container').html(html);
+                                initChoices();
+                            });
+                        }
+
+                        // Load variant combinations (SKU generation)
+                        function loadVariantCombinations() {
+                            let attrs = [];
+                            $('.attribute-item').each(function() {
+                                let id = $(this).data('id');
+                                let items = $(this).val();
+                                if (items && items.length) attrs.push({ id, items });
+                            });
+
+                            $.ajax({
+                                url: '{{ route("products.getItemsCombo") }}',
+                                method: 'GET',
+                                data: {
+                                    sku_prefix: $('#sku_prefix').val(),
+                                    sale_price: $('#sale_price').val(),
+                                    purchase_price: $('#purchase_price').val(),
+                                    attributes: attrs
+                                },
+                                success: function(html) {
+                                    $('#variant_combinations_container').html(html);
+                                }
+                            });
+                        }
+
+                        // ✅ NEW: Dynamically show file inputs for color/image attributes
+                        function updateImageUploadFields() {
+                            $('.attribute-item').each(function() {
+                                let hasImage = $(this).data('has-image'); // detect attribute with images (Color)
+                                if (!hasImage) return;
+
+                                let attrId = $(this).data('id');
+                                let selectedItems = $(this).find('option:selected');
+                                let container = $('.image-upload-container[data-attr-id="' + attrId + '"] .image-upload-fields');
+
+                                container.html(''); // Clear previous fields
+
+                                selectedItems.each(function() {
+                                    let itemId = $(this).val();
+                                    let itemName = $(this).text();
+
+                                    // Add file upload input per selected item
+                                    let fieldHtml = `
+                                        <div class="d-flex align-items-center mb-2 single-upload-field" data-item-id="${itemId}">
+                                            <span class="me-2 fw-semibold text-secondary" style="min-width:80px">${itemName}</span>
+                                            <input type="file" name="attribute_images[${attrId}][${itemId}]" class="form-control form-control-sm" accept="image/*">
+                                        </div>
+                                    `;
+                                    container.append(fieldHtml);
+                                });
+                            });
+                        }
+
+                        // --------------------
+                        // Event Bindings
+                        // --------------------
+                        $('#attribute_id').on('change', loadAttributeItems);
+
+                            // When user selects attribute items (e.g., colors or sizes)
+                            $(document).on('change', '.attribute-item', function() {
+                                loadVariantCombinations();
+                                updateImageUploadFields(); // 👈 Add this
+                            });
+
+                            // When SKU or Price changes, refresh variant combinations
+                            $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price', loadVariantCombinations);
+
+                            // Remove variant row
+                            $(document).on('click', '.remove-variant', function() {
+                                $(this).closest('tr').remove();
+                            });
+
+                            // Initialize on page load
+                            initChoices();
+                        });
+                    </script>
+
+                @endpush
