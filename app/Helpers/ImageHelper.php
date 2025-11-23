@@ -4,51 +4,63 @@ namespace App\Helpers;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
 
 class ImageHelper
 {
-    public static function uploadImage($file, $folder, $update = null)
+    /**
+     * Upload an image safely.
+     *
+     * @param UploadedFile|null $file
+     * @param string $folder
+     * @param string|null $existingPath
+     * @return string|null
+     */
+    public static function uploadImage($file, string $folder, string $existingPath = null): ?string
     {
-        $fileUrl = null;
-
-        if ($file) {
-            // Delete existing file if $update is provided and has a file path
-            if ($update) {
-                $oldFilePath = public_path($update);
-                if (file_exists($oldFilePath)) {
-                    unlink($oldFilePath);
-                }
-            }
-
-            // Generate a unique file name
-            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $extension = $file->getClientOriginalExtension();
-            $uniqueName = Str::slug($originalName) . '_' . uniqid() . '.' . $extension;
-            // $uniqueName = Str::slug($originalName) . '.' . $extension;
-
-            // Define the directory path
-            $directory = public_path($folder);
-
-            // Ensure the directory exists; create if it doesn't
-            if (!File::isDirectory($directory)) {
-                File::makeDirectory($directory, 0777, true, true);
-            }
-
-            // Move the file to the directory with the new unique name
-            $file->move($directory, $uniqueName);
-            $fileUrl = "{$folder}/{$uniqueName}";
-        } else {
-            $fileUrl = $update ? $update : null;
+        // Keep existing file if no new file is provided
+        if (!$file instanceof UploadedFile) {
+            return $existingPath;
         }
 
-        return $fileUrl;
+        // Delete old file if exists
+        if ($existingPath && file_exists(public_path($existingPath))) {
+            @unlink(public_path($existingPath));
+        }
+
+        // Ensure folder exists
+        $directory = public_path($folder);
+        if (!File::isDirectory($directory)) {
+            File::makeDirectory($directory, 0777, true, true);
+        }
+
+        // Sanitize and generate unique filename
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        $uniqueName = Str::slug($originalName) . '_' . uniqid() . '.' . $extension;
+
+        // Move file safely
+        try {
+            $file->move($directory, $uniqueName);
+        } catch (\Exception $e) {
+            // Optional: log error for debugging
+            \Log::error("Image upload failed: " . $e->getMessage());
+            return $existingPath; // fallback to old file
+        }
+
+        return $folder . '/' . $uniqueName;
     }
 
-    public static function deleteImage($imagePath)
+    /**
+     * Delete an image safely.
+     *
+     * @param string|null $imagePath
+     * @return bool
+     */
+    public static function deleteImage(?string $imagePath): bool
     {
         if ($imagePath && file_exists(public_path($imagePath))) {
-            unlink(public_path($imagePath));
-            return true;
+            return @unlink(public_path($imagePath));
         }
         return false;
     }

@@ -308,17 +308,15 @@
                 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
                 <script>
                     $(function() {
-                        // Initialize Choices.js dropdowns
+                        // Initialize Choices.js for select elements
                         function initChoices() {
-                            const makeChoice = (el) => new Choices(el, {
-                                removeItemButton: true,
-                                searchEnabled: true,
-                                placeholderValue: 'Select Items'
-                            });
-
                             $('.attribute-item').each(function() {
                                 if (!$(this).data('choices-initialized')) {
-                                    makeChoice(this);
+                                    new Choices(this, {
+                                        removeItemButton: true,
+                                        searchEnabled: true,
+                                        placeholderValue: 'Select Items'
+                                    });
                                     $(this).data('choices-initialized', true);
                                 }
                             });

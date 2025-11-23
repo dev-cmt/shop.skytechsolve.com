@@ -9,7 +9,7 @@
 <table class="table table-sm table-bordered">
     <thead>
         <tr>
-            <th>Variant Name</th>
+            <th>Variant</th>
             <th>SKU</th>
             <th>Price</th>
             <th>Purchase Price</th>
@@ -20,7 +20,7 @@
     <tbody>
         @foreach($variants as $variant)
         <tr>
-            <td>{{ $variant['name'] }}</td>
+            <td  class="text-nowrap"> {{ $variant['name'] }}</td>
             <td><input type="text" name="variants[sku][]" class="form-control form-control-sm" value="{{ $variant['sku'] }}"></td>
             <td><input type="number" name="variants[price][]" class="form-control form-control-sm" value="{{ $variant['price'] }}"></td>
             <td><input type="number" name="variants[purchase_cost][]" class="form-control form-control-sm" value="{{ $variant['purchase_cost'] }}"></td>
