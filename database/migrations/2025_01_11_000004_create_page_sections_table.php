@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pages', function (Blueprint $table) {
+        Schema::create('page_sections', function (Blueprint $table) {
             $table->id();
-            $table->string('title');      // e.g. Home, About, Contact
-            $table->string('slug')->unique(); // e.g. home, about, contact
-            $table->longText('content')->nullable();
-            $table->string('layout')->default('default'); // e.g. full-width
-            $table->boolean('status')->default(true);
+            $table->foreignId('page_id')->constrained()->onDelete('cascade');
+            $table->string('type'); // hero, features, products, contact, etc.
+            $table->text('content'); // JSON data
             $table->integer('order')->default(0);
+            $table->boolean('status')->default(true);
+            $table->json('settings')->nullable();
             $table->timestamps();
         });
     }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pages');
+        Schema::dropIfExists('page_sections');
     }
 };

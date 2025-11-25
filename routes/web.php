@@ -119,4 +119,89 @@ Route::middleware('auth')->group(function () {
     Route::post('/seo-pages/{page}',[PageSeoController::class,'update'])->name('settings.seo.update');
 });
 
+
+
+
+/**--------------------------------------------------------------------------------------------------------------------
+/**--------------------------------------------------------------------------------------------------------------------
+ * PAGE BUILDER
+ * --------------------------------------------------------------------------------------------------------------------
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+// routes/web.php
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\SectionController;
+use App\Http\Controllers\OrderController;
+
+// Route::get('/', function () {
+//     $page = App\Models\Page::where('slug', 'home')->first();
+//     if ($page) {
+//         return app(PageController::class)->show('home');
+//     } return view('welcome');
+// });
+
+// Page routes
+Route::get('/pages/{slug}', [PageController::class, 'show'])->name('pages.show');
+
+
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+    // Pages Management
+    Route::get('/pages', [PageController::class, 'index'])->name('pages.index');
+    Route::get('/pages/create', [PageController::class, 'create'])->name('pages.create');
+    Route::post('/pages', [PageController::class, 'store'])->name('pages.store');
+    Route::get('/pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
+    Route::put('/pages/{page}', [PageController::class, 'update'])->name('pages.update');
+    Route::delete('/pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
+    Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
+    Route::post('/pages/{page}/publish', [PageController::class, 'publish'])->name('pages.publish');
+    Route::post('/pages/{page}/unpublish', [PageController::class, 'unpublish'])->name('pages.unpublish');
+
+    // Sections Management
+    Route::post('/sections', [SectionController::class, 'store'])->name('sections.store');
+    Route::get('/sections/{section}/edit', [SectionController::class, 'edit'])->name('sections.edit');
+    Route::put('/sections/{section}', [SectionController::class, 'update'])->name('sections.update');
+    Route::delete('/sections/{section}', [SectionController::class, 'destroy'])->name('sections.destroy');
+    Route::post('/sections/reorder', [SectionController::class, 'reorder'])->name('sections.reorder');
+    Route::post('/sections/{section}/duplicate', [SectionController::class, 'duplicate'])->name('sections.duplicate');
+    Route::post('/sections/{section}/toggle-active', [SectionController::class, 'toggleActive'])->name('sections.toggle-active');
+
+    // Products Management
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 require __DIR__.'/auth.php';
