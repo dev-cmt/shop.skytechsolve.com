@@ -95,7 +95,7 @@ class RolePermissionSeeder extends Seeder
 
         $customer = User::firstOrCreate(
             ['email' => 'customer@gmail.com'],
-            ['name' => 'Customer User', 'password' => 'customer12345']
+            ['name' => 'Customer User', 'password' => 'customer12345', 'user_type' => 'customer']
         );
         $customer->syncRoles([$customerRole]);
 

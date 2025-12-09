@@ -11,10 +11,12 @@ use App\Http\Controllers\PageSeoController;
 use App\Http\Controllers\DeveloperApiController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\AttributeController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SitemapController;
 
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
@@ -48,6 +50,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/attributes/items', [ProductController::class, 'getItems'])->name('attributes.getItems');
     Route::get('/products/variants', [ProductController::class, 'getVariantCombinations'])->name('products.getItemsCombo');
 
+    // Store
+    Route::get('/stores', [StoreController::class, 'index'])->name('stores.index');
+    Route::post('/stores', [StoreController::class, 'store'])->name('stores.store');
+    Route::post('/stores/update', [StoreController::class, 'update'])->name('stores.update');
+    Route::delete('/stores/{stores}/delete', [StoreController::class, 'destroy'])->name('stores.destroy');
+    
     // Categories
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
@@ -76,7 +84,13 @@ Route::middleware('auth')->group(function () {
     Route::post('attribute-items/update', [AttributeController::class, 'updateItem'])->name('attribute-items.update');
     Route::post('attribute-items/destroy', [AttributeController::class, 'destroyItem'])->name('attribute-items.destroy');
 
-
+    // Order
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders/edit/{orders}', [OrderController::class, 'edit'])->name('orders.edit');
+    Route::put('/orders/update/{orders}', [OrderController::class, 'update'])->name('orders.update');
+    Route::delete('/orders/{orders}/delete', [OrderController::class, 'destroy'])->name('orders.destroy');
 
 
     // Blog Routes
@@ -131,7 +145,6 @@ Route::middleware('auth')->group(function () {
 // routes/web.php
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\SectionController;
-use App\Http\Controllers\OrderController;
 
 // Route::get('/', function () {
 //     $page = App\Models\Page::where('slug', 'home')->first();
