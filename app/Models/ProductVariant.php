@@ -13,13 +13,14 @@ class ProductVariant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id', 'sku', 'price', 'purchase_cost', 'quantity'
+        'product_id', 'sku', 'price', 'purchase_cost', 'quantity', 'attribute_item_ids'
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'purchase_cost' => 'decimal:2',
         'quantity' => 'integer',
+        'attribute_item_ids' => 'array',
     ];
 
     // Relationships

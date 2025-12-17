@@ -368,7 +368,6 @@
                 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
                 <script>
                     $(function() {
-
                         // Initialize Choices.js for searchable selects
                         function initChoices() {
                             $('.attribute-item').each(function() {
@@ -383,7 +382,7 @@
                             });
                         }
 
-                        // Load attribute items partial via AJAX
+                        // Load attribute items (e.g. Color, Size options)
                         function loadAttributeItems(loadExisting = true) {
                             let selected = $('#attribute_id').val();
                             if (!selected || !selected.length) {
@@ -408,7 +407,7 @@
                             });
                         }
 
-                        // Generate variant combinations table
+                        // Load variant combinations (SKU generation)
                         function loadVariantCombinations() {
                             let attrs = [];
                             $('.attribute-item').each(function() {
@@ -422,6 +421,7 @@
                                 sku_prefix: $('#sku_prefix').val(),
                                 sale_price: $('#sale_price').val(),
                                 purchase_price: $('#purchase_price').val(),
+                                total_stock: $('#total_stock').val(),
                                 attributes: attrs,
                                 product_id: '{{ $product->id ?? '' }}'
                             }, function(html) {
@@ -466,7 +466,7 @@
 
                         // Attribute select change (main attribute selection)
                         $('#attribute_id').on('change', function() {
-                            loadAttributeItems(false);
+                            loadAttributeItems(true);
                             $('#variant_combinations_container').html('');
                         });
 
@@ -477,7 +477,7 @@
                         });
 
                         // Update variant combinations when prices or SKU change
-                        $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price', loadVariantCombinations);
+                        $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price, #total_stock', loadVariantCombinations);
 
                         // Remove variant row
                         $(document).on('click', '.remove-variant', function() {
@@ -491,9 +491,6 @@
                         loadAttributeItems(true);
 
                     });
-
-
-
 
                 </script>
                 @endpush

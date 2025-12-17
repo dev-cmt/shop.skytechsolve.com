@@ -51,21 +51,27 @@ class ProductController extends Controller
             // 2. Variants
             if (!empty($data['variants'])) {
                 foreach ($data['variants']['sku'] as $i => $sku) {
+                    $itemIds = collect($data['attribute_items'] ?? [])->pluck($i)->filter()->values()->all(); // [0, 1, 2...]
+
                     $variant = $product->variants()->create([
                         'sku' => $sku,
                         'price' => $data['variants']['price'][$i] ?? 0,
                         'purchase_cost' => $data['variants']['purchase_cost'][$i] ?? 0,
-                        'quantity' => $data['variants']['quantity'][$i] ?? 0
+                        'quantity' => $data['variants']['quantity'][$i] ?? 0,
+                        'attribute_item_ids' => $itemIds
                     ]);
 
                     // 3. Attribute items for this variant
                     if (!empty($data['attribute_items'])) {
                         foreach ($data['attribute_items'] as $attrId => $items) {
                             foreach ($items as $itemId) {
+                                // FIX: Get the specific image file from the request
+                                $imageFile = $request->file("attribute_images.$attrId.$itemId");
+
                                 $variant->variantItems()->create([
                                     'attribute_id' => $attrId,
                                     'attribute_item_id' => $itemId,
-                                    'image' => 'image.png'
+                                    'image' => $imageFile ? ImageHelper::uploadImage($imageFile, 'uploads/variant') : null
                                 ]);
                             }
                         }
@@ -192,14 +198,16 @@ class ProductController extends Controller
             $updatedVariantIDs = [];
 
             foreach ($incomingSKUs as $i => $sku) {
+                $itemIds = collect($request->attribute_items ?? [])->pluck($i)->filter()->values()->all();
 
                 // Update or create variant by SKU
                 $variant = $product->variants()->updateOrCreate(
                     ['sku' => $sku],
                     [
-                        'price'         => $request->variants['price'][$i] ?? 0,
-                        'purchase_cost' => $request->variants['purchase_cost'][$i] ?? 0,
-                        'quantity'      => $request->variants['quantity'][$i] ?? 0,
+                        'price'             => $request->variants['price'][$i] ?? 0,
+                        'purchase_cost'     => $request->variants['purchase_cost'][$i] ?? 0,
+                        'quantity'          => $request->variants['quantity'][$i] ?? 0,
+                        'attribute_item_ids'=> $itemIds,
                     ]
                 );
                 $updatedVariantIDs[] = $variant->id;
@@ -213,21 +221,10 @@ class ProductController extends Controller
 
                     foreach ($request->attribute_items as $attrId => $items) {
                         foreach ($items as $itemId) {
-
                             $incomingPairs[] = $attrId.'-'.$itemId;
-
-                            $oldItem = $variant->variantItems()
-                                ->where('attribute_id', $attrId)
-                                ->where('attribute_item_id', $itemId)
-                                ->first();
-
+                            $oldItem = $variant->variantItems()->where('attribute_id', $attrId)->where('attribute_item_id', $itemId)->first();
                             $newImage = $request->file("attribute_images.$attrId.$itemId");
-
-                            $finalImage = ImageHelper::uploadImage(
-                                $newImage,
-                                'uploads/variant',
-                                $oldItem->image ?? null
-                            );
+                            $finalImage = ImageHelper::uploadImage($newImage, 'uploads/variant', $oldItem->image ?? null);
 
                             $variant->variantItems()->updateOrCreate(
                                 ['attribute_id' => $attrId, 'attribute_item_id' => $itemId],
@@ -327,21 +324,6 @@ class ProductController extends Controller
      * Get attribute items based on selected attribute IDs
      * ----------------------------------------------------------------------
      */
-    // public function getItems(Request $request)
-    // {
-    //     $attributeIds = $request->get('attribute_ids', []);
-    //     if (empty($attributeIds)) {
-    //         return '';
-    //     }
-
-    //     $attributes = Attribute::with('items')
-    //         ->whereIn('id', $attributeIds)
-    //         ->get();
-
-    //     return view('backend.products.partials._attribute_items', compact('attributes'))->render();
-    // }
-
-
     public function getItems(Request $request)
     {
         $attributeIds = $request->get('attribute_ids', []);
@@ -371,49 +353,13 @@ class ProductController extends Controller
         return view('backend.products.partials._attribute_items', compact('attributes','selectedItems','existingImages'))->render();
     }
 
-
-    // public function getVariantCombinations(Request $request)
-    // {
-    //     $skuPrefix = $request->input('sku_prefix', 'SKU');
-    //     $sale_price = $request->input('sale_price', 0);
-    //     $purchase_price = $request->input('purchase_price', 0);
-    //     $attributes = collect($request->input('attributes', []))->filter(fn($a) => !empty($a['items']))->values();
-
-    //     if ($attributes->isEmpty()) {
-    //         return '';
-    //     }
-
-    //     // Collect items for cartesian
-    //     $combos = $this->cartesianProduct($attributes->pluck('items')->toArray());
-
-    //     $variants = collect($combos)->map(function ($combo) use ($skuPrefix, $sale_price, $purchase_price) {
-    //         $names = [];
-    //         foreach ($combo as $id) {
-    //             $item = AttributeItem::find($id);
-    //             if ($item) $names[] = $item->name;
-    //         }
-
-    //         $sku = $skuPrefix . '-' . strtolower(implode('-', array_map(fn($n) => str_replace(' ', '-', $n), $names)));
-
-    //         return [
-    //             'name' => implode(' | ', $names),
-    //             'sku' => $sku,
-    //             'price' => $sale_price,
-    //             'purchase_cost' => $purchase_price > 0 ? $purchase_price : $sale_price * 0.75,
-    //             'quantity' => 0,
-    //         ];
-    //     });
-
-    //     return view('backend.products.partials._variant_table', compact('variants'))->render();
-    // }
-
     public function getVariantCombinations(Request $request)
     {
         $skuPrefix = $request->input('sku_prefix', 'SKU');
         $sale_price = $request->input('sale_price', 0);
         $purchase_price = $request->input('purchase_price', 0);
-        $attributes = collect($request->input('attributes', []))
-                        ->filter(fn($a) => !empty($a['items']))
+        $total_stock = $request->input('total_stock', 0);
+        $attributes = collect($request->input('attributes', []))->filter(fn($a) => !empty($a['items']))
                         ->map(function($a) {
                             $a['items'] = array_map('intval', $a['items']);
                             return $a;
@@ -444,7 +390,7 @@ class ProductController extends Controller
         // Collect items for cartesian product
         $combos = $this->cartesianProduct($attributes->pluck('items')->toArray());
 
-        $variants = collect($combos)->map(function ($combo) use ($skuPrefix, $sale_price, $purchase_price, $existingVariants) {
+        $variants = collect($combos)->map(function ($combo) use ($skuPrefix, $sale_price, $purchase_price, $total_stock, $existingVariants) {
             $comboItemIds = array_map('intval', $combo);
             sort($comboItemIds);
 
@@ -464,7 +410,7 @@ class ProductController extends Controller
                 'sku' => $existing['sku'] ?? $defaultSku,
                 'price' => $existing['price'] ?? $sale_price,
                 'purchase_cost' => $existing['purchase_cost'] ?? ($purchase_price > 0 ? $purchase_price : $sale_price * 0.75),
-                'quantity' => $existing['quantity'] ?? 0,
+                'quantity' => $existing['quantity'] ?? $total_stock,
                 'items' => $comboItemIds
             ];
         });

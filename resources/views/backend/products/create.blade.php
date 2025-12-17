@@ -353,6 +353,7 @@
                                     sku_prefix: $('#sku_prefix').val(),
                                     sale_price: $('#sale_price').val(),
                                     purchase_price: $('#purchase_price').val(),
+                                    total_stock: $('#total_stock').val(),
                                     attributes: attrs
                                 },
                                 success: function(html) {
@@ -401,7 +402,7 @@
                             });
 
                             // When SKU or Price changes, refresh variant combinations
-                            $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price', loadVariantCombinations);
+                            $(document).on('keyup change', '#sku_prefix, #sale_price, #purchase_price, #total_stock', loadVariantCombinations);
 
                             // Remove variant row
                             $(document).on('click', '.remove-variant', function() {
